@@ -4,6 +4,7 @@ import UserNavigation from './UserNavigation';
 import BottomNavigation from './BottomNavigation';
 import Verify from '../users/Verify';
 import Authcode from '../users/Authcode';
+import AdminNavigation from './AdminNavigation';
 // import BottomNavigation from './BottomNavigation';
 // import ProductDetails from '../shop/ProductDetails';
 
@@ -23,6 +24,11 @@ const MainNavigations = () => {
        <Stack.Screen 
         name="MainScreen"
         component={BottomNavigation}
+        options={{ headerShown: false }}
+      />  
+             <Stack.Screen 
+        name="AdminScreen"
+        component={AdminNavigation}
         options={{ headerShown: false }}
       />  
 
