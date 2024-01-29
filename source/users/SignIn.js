@@ -44,12 +44,29 @@ const SignIn = () => {
     .then((response) => {
       if (response.status === 200) {
         const userData = response.data;
-        console.log("just a look through",userData);
-        AsyncStorage.setItem("userString", JSON.stringify(userData));
-        navigation.navigate("MainScreen");
+        const userRole = userData.role;
+
+        // Save user role to AsyncStorage
+        AsyncStorage.setItem("userRole", userRole);
+
+        // Navigate based on user role
+        if (userRole === 'wiseJudge') {
+          navigation.navigate("AdminScreen");
+        } else if (userRole === 'user' || userRole === '') {
+          navigation.navigate("MainScreen");
+        } else {
+          console.log("Unsupported user role:", userRole);
+        }
       } else {
         Toast.show(response.message, Toast.LENGTH_SHORT);
       }
+
+      //   console.log("just a look through",userData);
+      //   AsyncStorage.setItem("userString", JSON.stringify(userData));
+      //   navigation.navigate("MainScreen");
+      // } else {
+      //   Toast.show(response.message, Toast.LENGTH_SHORT);
+      // }
     })
     .catch((error) => {
       console.log(error);
