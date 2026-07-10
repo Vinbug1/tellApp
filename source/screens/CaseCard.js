@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Octicons, Entypo } from "@expo/vector-icons";
-import { useNavigation} from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import {
   SafeAreaView,
   View,
@@ -9,115 +9,207 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Platform,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
-import baseUrl from "../../assets/baseUrl";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import baseUrl from "../../assets/baseUrl";
 
 const { width } = Dimensions.get("window");
-
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
 const CaseCard = ({ useCase }) => {
   const navigation = useNavigation();
-
-  const caseData = useCase && useCase.length > 0 ? useCase[0] : {}; // Assuming useCase is an array
-
-  const [userDetails, setUserDetails] = useState();
   const [selectedDecision, setSelectedDecision] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Handle case data safely
+  const caseData = useCase && useCase.length > 0 ? useCase[0] : null;
+
+  // Set initial decision state when caseData changes
   useEffect(() => {
-    // Set the initial selectedDecision based on the case status
-    setSelectedDecision(caseData.status);
-  }, [caseData.status]);
+    if (caseData?.status) {
+      setSelectedDecision(caseData.status);
+    }
+  }, [caseData]);
 
-  const handleDecision = async (decision) => {
+  // Fetch user details
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      try {
+        const userDataString = await AsyncStorage.getItem("userDetails");
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          setUserDetails(userData);
+        }
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+      }
+    };
+
+    fetchUserDetails();
+  }, []);
+
+  // Handle decision update
+  const handleDecision = useCallback(async (decision) => {
+    if (!caseData?._id) {
+      Alert.alert("Error", "Case ID is missing");
+      return;
+    }
+
+    setIsLoading(true);
+    const previousDecision = selectedDecision;
+    
+    // Optimistically update UI
+    setSelectedDecision(decision);
+
     try {
-      setSelectedDecision(decision);
-      // const axios = require('axios');
-      let data = JSON.stringify({
-        case: caseData._id,
-        decision: selectedDecision
-      });
+      const token = await AsyncStorage.getItem("token");
+      
+      if (!token) {
+        Alert.alert("Error", "Authentication token not found. Please log in again.");
+        setSelectedDecision(previousDecision);
+        return;
+      }
 
-      let config = {
-        method: 'put',
-        maxBodyLength: Infinity,
-        url: `${baseUrl}cases/${caseData._id}/decision`,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        data: data
-      };
+      const response = await axios.put(
+        `${baseUrl}cases/${caseData._id}/decision`,
+        { case: caseData._id, decision },
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          } 
+        }
+      );
 
-      axios.request(config)
-        .then((response) => {
-          console.log(JSON.stringify(response.data));
-        })
-        .catch((error) => {
-          console.log(error);
-        });
+      console.log("✅ Decision updated successfully:", decision);
+      
+      // Show success message
+      Alert.alert(
+        "Success", 
+        `Case ${decision === "Accept" ? "accepted" : "declined"} successfully`
+      );
 
     } catch (error) {
-      console.error('Error updating case status:', error);
+      console.error("❌ Error updating case status:", error);
+      
+      // Revert to previous state on error
+      setSelectedDecision(previousDecision);
+      
+      // Show error message
+      const errorMessage = error.response?.data?.message || "Failed to update case status";
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [caseData?._id, selectedDecision]);
+
+  const navigateToDetail = () => {
+    if (caseData) {
+      navigation.navigate("DetailScreen", { caseData });
     }
   };
 
-  const userImage = userDetails && userDetails.image ? { uri: userDetails.image } : defaultImageSource;
+  // Determine user image source
+  const userImage = userDetails?.image ? { uri: userDetails.image } : defaultImageSource;
 
+  // Handle loading or no case data
+  if (!caseData) {
+    return (
+      <SafeAreaView>
+        <View style={styles.noPendingCasesContainer}>
+          <Text style={styles.noPendingCasesText}>
+            No cases available
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const navigateToDetail = () => {
-    // Define your navigation logic here
-    // For example, you can navigate to a "CaseDetail" screen
-    navigation.navigate("DetailScreen", { caseData: caseData});
-  };
+  // Handle accepted cases
+  if (selectedDecision === "Accept") {
+    return (
+      <SafeAreaView>
+        <View style={styles.noPendingCasesContainer}>
+          <Text style={styles.noPendingCasesText}>
+            You do not have any pending cases.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView>
-            <TouchableOpacity onPress={() => navigateToDetail()}>
-      <View style={styles.avatarWrapper}>
-        <Image resizeMode="cover" source={userImage} style={styles.avatar} />
-        <View style={{ marginTop: 5 }}>
-          {caseData.status === 'Accept' ? (
-            <View style={styles.noPendingCasesContainer}>
-              <Text style={styles.noPendingCasesText}>You do not have any pending cases.</Text>
+      <TouchableOpacity onPress={navigateToDetail} disabled={isLoading} activeOpacity={0.8}>
+        <View style={styles.avatarWrapper}>
+          <Image 
+            resizeMode="cover" 
+            source={userImage} 
+            style={styles.avatar} 
+          />
+          
+          <View style={styles.contentContainer}>
+            <View style={styles.caseInfo}>
+              <Text style={styles.cattxt} numberOfLines={1} ellipsizeMode="tail">
+                {caseData.caseCategory?.caseNumber || "N/A"}
+              </Text>
+              <Text style={styles.txt} numberOfLines={1} ellipsizeMode="tail">
+                {caseData.caseType || "Unknown Type"}
+              </Text>
             </View>
-          ) : (
-            <>
-              <View style={{ position: 'absolute', top: 9, left: 21 }}>
-                <Text style={styles.cattxt}>{caseData.caseCategory && caseData.caseCategory.caseNumber}</Text>
-                <Text style={styles.txt}>{caseData.caseType}</Text>
-              </View>
-              <View style={styles.dotIndicator}>
-                <View
-                  style={[
-                    styles.dot,
-                    { backgroundColor: caseData.status === 'Accept' ? 'transparent' : caseData.status === 'Decline' ? 'red' : 'yellow' },
-                  ]}
-                />
-                <Text style={styles.statusText}>
-                  {caseData.status === 'Accept' ? 'Accepted' : caseData.status === 'Decline' ? 'Declined' : 'Pending'}
-                </Text>
-              </View>
 
-              {/* Buttons for accept and decline */}
-              {(!selectedDecision || selectedDecision === 'Pending') && (
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity style={styles.acceptButton} onPress={() => handleDecision('Accept')}>
-                    <Octicons name="check" size={24} color="white" />
-                    <Text style={styles.buttonText}>Accept</Text>
-                  </TouchableOpacity>
+            <View style={styles.dotIndicator}>
+              <View
+                style={[
+                  styles.dot,
+                  { 
+                    backgroundColor: 
+                      selectedDecision === "Decline" ? "red" : 
+                      selectedDecision === "Accept" ? "green" : 
+                      "yellow" 
+                  },
+                ]}
+              />
+              <Text style={styles.statusText}>
+                {selectedDecision === "Accept" ? "Accepted" : 
+                 selectedDecision === "Decline" ? "Declined" : 
+                 "Pending"}
+              </Text>
+            </View>
 
-                  <TouchableOpacity style={styles.declineButton} onPress={() => handleDecision('Decline')}>
-                    <Entypo name="cross" size={24} color="white" />
-                    <Text style={styles.buttonText}>Decline</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
-          )}
+            {selectedDecision === "Pending" && (
+              <View style={styles.buttonContainer}>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#000A83" />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => handleDecision("Accept")}
+                      disabled={isLoading}
+                    >
+                      <Octicons name="check" size={16} color="white" />
+                      <Text style={styles.buttonText} numberOfLines={1}>Accept</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={styles.declineButton}
+                      onPress={() => handleDecision("Decline")}
+                      disabled={isLoading}
+                    >
+                      <Entypo name="cross" size={16} color="white" />
+                      <Text style={styles.buttonText} numberOfLines={1}>Decline</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
         </View>
-      </View>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -127,44 +219,45 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     margin: 9,
     flexDirection: "row",
-    justifyContent: "space-evenly",
-    width: "90%",
-    height: 150,
+    alignItems: "center",
+    width: "92%",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#000A83",
     alignSelf: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
   },
   avatar: {
-    width: 105,
-    height: 105,
-    borderRadius: 12,
-    position: "relative",
-    top: 23,
+    width: 85,
+    height: 85,
+    borderRadius: 10,
+    flexShrink: 0,
+  },
+  contentContainer: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 12,
+    justifyContent: "space-between",
+  },
+  caseInfo: {
+    marginBottom: 6,
   },
   txt: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "normal",
-    textAlign: "center",
     color: "black",
-    left: -6,
-    padding: -3,
+    marginTop: 2,
   },
   cattxt: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
-    textAlign: "center",
-   padding: 4,
     color: "black",
-    left: 5,
   },
   dotIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    // marginTop: -5,
-    position: 'relative',
-    top: 55,
-    left: 18
+    marginBottom: 8,
   },
   dot: {
     width: 10,
@@ -173,51 +266,58 @@ const styles = StyleSheet.create({
   },
   statusText: {
     marginLeft: 5,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'normal',
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    position: 'relative',
-    top: 62,
-    paddingHorizontal: 6,
+    justifyContent: 'space-between',
+    gap: 8,
   },
   acceptButton: {
-    height: 38,
+    flex: 1,
+    minWidth: 0,
+    height: 34,
     backgroundColor: 'green',
-    padding: 10,
+    paddingHorizontal: 6,
     borderRadius: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 7
+    justifyContent: 'center',
   },
   declineButton: {
-    height: 38,
+    flex: 1,
+    minWidth: 0,
+    height: 34,
     backgroundColor: 'red',
-    padding: 10,
+    paddingHorizontal: 6,
     borderRadius: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 7
+    justifyContent: 'center',
   },
   buttonText: {
     color: 'white',
-    marginLeft: 5,
+    marginLeft: 4,
+    fontWeight: '600',
+    fontSize: 12,
+    flexShrink: 1,
   },
   noPendingCasesContainer: {
-    width: "80%",
+    width: "90%",
     justifyContent: "center",
-    marginTop: 40,
-    //marginLeft: 40,
+    alignItems: "center",
+    marginVertical: 40,
     alignSelf: 'center',
-    textAlign: "center",
-    left: 30,
+    padding: 20,
   },
   noPendingCasesText: {
     fontSize: 18,
     color: 'black',
+    textAlign: "center",
   }
 });
 
 export default CaseCard;
+
+

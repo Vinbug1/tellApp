@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
+  ScrollView,
   Dimensions
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -17,20 +18,19 @@ import Toast from "react-native-root-toast";
 import SimpleButton from "../utils/SimpleButton";
 import baseUrl from "../../assets/baseUrl";
 import * as ImagePicker from "expo-image-picker";
-import {AntDesign,Ionicons } from '@expo/vector-icons';
+import {Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get("window");
 
 
 const EditProfile = () => {
   const navigation = useNavigation();
-  const [fullname, setFullName] = useState("");
+  const [firstname, setFirstName] = useState("");
+  const [lastname, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassWord] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState(null);
-  //const [userDetails, setUserDetails] = useState()
+  const [profileImage, setProfileImage] = useState("");
+  const [loading,setLoading]=useState(false);
 
   const [image, setImage] = useState(null);
 
@@ -51,11 +51,17 @@ const EditProfile = () => {
         .then((data) => {
           if (data) {
             const user = JSON.parse(data);
-            setFullName(user.fullname);
-            setPhone(user.phone);
-            setEmail(user.email);
-            setPassWord(user.password);
-            // You might want to handle password and confirmPassword differently
+
+            // 🔍 Debug: confirm what's actually in storage.
+            // Once SignIn.js saves lastname correctly, this should
+            // show a populated lastname field. Remove after confirming.
+            console.log("Loaded user from storage:", user);
+
+            setFirstName(user.firstname || "");
+            setLastName(user.lastname || "");
+            setPhone(user.phone || "");
+            setEmail(user.email || "");
+            setProfileImage(user.image || "");
           } else {
             console.log("Object not found in AsyncStorage");
           }
@@ -80,14 +86,10 @@ const EditProfile = () => {
         quality: 1,
       });
 
-      //console.log("ImagePicker Result:", result);
-
       if (!result.canceled) {
-        // Use the first asset from the assets array
         const selectedAsset = result.assets && result.assets.length > 0 ? result.assets[0] : null;
 
         if (selectedAsset) {
-          //console.log("Selected Image URI:", selectedAsset.uri);
           setImage(selectedAsset.uri);
         }
       }
@@ -98,127 +100,184 @@ const EditProfile = () => {
 
 
 
+  
   const handleSubmit = async () => {
     try {
+      setLoading(true);
+      // Validate inputs
+      if (!firstname || !lastname || !phone || !email) {
+        Toast.show("Please fill in all fields", Toast.LENGTH_SHORT);
+        return;
+      }
 
-      const user = { fullname, phone, email, password };
-      if (password !== confirmPassword) {
-        Toast.show("Password does not match", Toast.LENGTH_SHORT);
+      // ✅ Fixed: userId + token are stored together in "userString" at login,
+      // not under separate "userId"/"userToken" keys (which were never set,
+      // so this always fell through to "Please login again" before).
+      const userString = await AsyncStorage.getItem('userString');
+      const userData = userString ? JSON.parse(userString) : null;
+      const userId = userData?.userId;
+      const token = userData?.token || (await AsyncStorage.getItem('token'));
 
-      } else {
-        if (fullname === "" || phone === "" || email === "") {
-          Toast.show("Please fill in your credentials", Toast.LENGTH_SHORT);
-        } else {
-          const response = await fetch(`${baseUrl}users/signup`, {
-            method: "PUT",
-            body: JSON.stringify(user),
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
+      if (!userId || !token) {
+        Toast.show("Please login again", Toast.LENGTH_SHORT);
+        navigation.reset({
+          index:0,
+          routes:[{name:"SignIn"}]
+      });        return;
+      }
+  
+      console.log('📤 Updating profile for user:', userId);
+  
+      // Create FormData for multipart/form-data
+      const formData = new FormData();
+      formData.append('firstname', firstname);
+      formData.append('lastname', lastname);
+      formData.append('phone', phone);
+      formData.append('email', email);
+  
+      // Add image if selected
+      if (image) {
+        const imageUri = Platform.OS === 'ios' ? image.replace('file://', '') : image;
+        const filename = image.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        
+        formData.append('profileImage', {
+          uri: imageUri,
+          name: filename,
+          type: type,
+        });
+        
+        console.log('📷 Image attached:', filename);
+      }
+  
+      // Send PUT request with FormData
+      const response = await fetch(`${baseUrl}users/${userId}`, {
+        method: "PUT",
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Note: Do NOT set Content-Type for FormData
+          // The browser/fetch will set it automatically with boundary
+        },
+      });
+  
+      const data = await response.json();
+      console.log('📥 Response:', data);
+  
+      if (response.ok) {
+        console.log('✅ Profile updated successfully');
 
-          if (response.ok) {
-            const data = await response.json();
-            //console.log("checking out my details",data);
-            AsyncStorage.setItem("userString", JSON.stringify(data));
-            navigation.navigate("AuthVerifyScreen");
-          } else {
-            Toast.show("Please provide correct credentials", Toast.LENGTH_SHORT);
-          }
+        // ✅ Fixed: keep "userString" and "token" (both used elsewhere in the
+        // app) in sync after a successful edit, so other screens (e.g. Cases,
+        // CaseCard) don't show stale name/image/token data.
+        if (data.userDetails) {
+          const mergedUser = { ...userData, ...data.userDetails };
+          await AsyncStorage.setItem('userString', JSON.stringify(mergedUser));
         }
 
+        if (data.token) {
+          await AsyncStorage.setItem('token', data.token);
+        }
+        
+        Toast.show("Profile updated successfully!", Toast.LENGTH_LONG);
+        
+        // Go back or navigate to profile screen
+        navigation.goBack();
+      } else {
+        console.log('❌ Update failed:', data);
+        Toast.show(data.message || "Failed to update profile", Toast.LENGTH_SHORT);
       }
     } catch (error) {
-      Toast.show(error.message, Toast.LENGTH_SHORT);
+      console.error('❌ Error updating profile:', error);
+      Toast.show(error.message || "An error occurred", Toast.LENGTH_SHORT);
+    } finally{
+      setLoading(false);
     }
   };
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.icon}>
-      <AntDesign name="leftcircleo" size={33} color="#000A83" />
-           </TouchableOpacity>
-
-      <View style={{ position: "absolute", top: 95, alignSelf: "center" }}>
-        <Text style={styles.headerText}>Edit Account</Text>
-      </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        enabled
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.icon}>
+      <Ionicons name="arrow-back-circle-outline" size={33} color="#000A83" />
+           </TouchableOpacity>
 
-        <View style={{ marginTop: 70, padding: 10 }}>
-          <View style={{ flexDirection: "row", }}>
-            <View>
-              {image ? (
-                <Image source={{ uri: image }} style={styles.avatar} />
-              ) : (
-                <Image source={require('../../assets/images/use.png')} style={styles.avatar} />
-              )}
+      <View style={{ position: "absolute", top: 95, alignSelf: "center", zIndex: 1 }}>
+        <Text style={styles.headerText}>Edit Account</Text>
+      </View>
+
+          <View style={{ marginTop: 70, padding: 10 }}>
+            <View style={{ flexDirection: "row", }}>
+              <View>
+              <Image
+                  source={
+                    image
+                      ? { uri: image }
+                      : profileImage
+                      ? { uri: profileImage + "?t=" + Date.now() }
+                      : require("../../assets/images/use.png")
+                  }
+                  style={styles.avatar}
+                />
+              </View>
+
+              <TouchableOpacity onPress={pickImage} style={{ left: -17, bottom: -45 }}>
+                <Ionicons name="camera" size={30} color="#000A83" />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={pickImage} style={{ left: -17, bottom: -45 }}>
-              {/* <Text style={{ marginLeft: 10 }}>Image</Text> */}
-              <Ionicons name="camera" size={30} color="#000A83" />
-            </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={{ marginLeft: 10 }}>FirstName</Text>
+              <Input
+                placeholder="Enter First Name"
+                onChangeText={(text) => setFirstName(text)}
+                value={firstname}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={{ marginLeft: 10 }}>LastName</Text>
+              <Input
+                placeholder="Enter Last Name"
+                onChangeText={(text) => setLastName(text)}
+                value={lastname}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={{ marginLeft: 10 }}>PhoneNumber</Text>
+              <Input
+                placeholder="Enter Phone Number"
+                onChangeText={(text) => setPhone(text)}
+                value={phone}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={{ marginLeft: 10 }}>Email</Text>
+              <Input
+                placeholder="Email"
+                onChangeText={(text) => setEmail(text)}
+                value={email}
+              />
+            </View>
+
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={{ marginLeft: 10 }}>FullName</Text>
-            <Input
-              placeholder="Enter Full Name"
-              onChangeText={(text) => setFullName(text)}
-              value={fullname}
-            />
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={{ marginLeft: 10 }}>PhoneNumber</Text>
-            <Input
-              placeholder="Enter Phone Number"
-              onChangeText={(text) => setPhone(text)}
-              value={phone}
-            />
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={{ marginLeft: 10 }}>Email</Text>
-            <Input
-              placeholder="Email"
-              onChangeText={(text) => setEmail(text)}
-              value={email}
-            />
-          </View>
-
-          {/* <View style={styles.inputContainer}>
-          <Text style={{ marginLeft: 10 }}>Password</Text>
-          <Input
-            placeholder="Password"
-            placeholderColor="#CCCEE6"
-            onChangeText={(text) => setPassWord(text)}
-            value={password}
-            secureTextEntry={true}
-          />
-        </View>
-        <View style={styles.inputContainer}>
-          <Text style={{ marginLeft: 10 }}>ConfirmPassword</Text>
-          <Input
-            placeholder="Confirm Password"
-            placeholderColor="#CCCEE6"
-            onChangeText={(text) => setConfirmPassword(text)}
-            value={confirmPassword}
-            secureTextEntry={true}
-          />
-        </View> */}
-
-        </View>
-
-
-
-        <View style={{ bottom: -240 }}>
+          <View style={styles.buttonContainer}>
           <SimpleButton
-            onPress={() => handleSubmit()}
-            buttonText="Update Account"
-          />
-        </View>
+            onPress={handleSubmit}
+            disabled={loading}
+            buttonText={loading ? "Updating..." : "Update Account"}
+        />
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -231,8 +290,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    justifyContent: "center",
   },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
+  buttonContainer:{
+    marginTop:150,
+    paddingHorizontal:15,
+},
   headerText: {
     fontSize: 24,
     fontWeight: "500",
@@ -241,9 +307,6 @@ const styles = StyleSheet.create({
   subHeaderText: {
     fontSize: 13,
     alignSelf: "center",
-  },
-  image: {
-    width: "100%",
   },
   inputContainer: {
     marginTop: 5,
@@ -284,17 +347,14 @@ const styles = StyleSheet.create({
   marginRight: {
     margin: 35, // Adjust the spacing as needed
   },
-  avatar: {
-    width: width * 0.20,
-    height: width * 0.20,
-    borderRadius: (width * 0.8) / 2,
-    alignSelf: "center",
-    marginTop: 7,
-    borderColor: "whitesmoke",
-    borderWidth: 1,
-    top: -15,
-
-  },
+  avatar:{
+    width: width*0.22,
+    height: width*0.22,
+    borderRadius:(width*0.22)/2,
+    borderWidth:1,
+    borderColor:"#ddd",
+    alignSelf:"center",
+},
   imageContainer: {
     marginTop: 10,
     position: "relative",
@@ -313,15 +373,13 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   icon: {
-    //backgroundColor: "whitesmoke",
-    //alignItems: "center",
     justifyContent: "flex-start",
     borderRadius: 50,
     height: 40,
     width: 40,
-    //position: "absolute",
-    top: 18,
+    top:Platform.OS === 'ios' ? 18 : 45,
     left: 28,
   },
 
 });
+

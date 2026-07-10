@@ -21,7 +21,8 @@ import usercategories from "../utils/UserCat";
 
 const SignUp = () => {
   const navigation = useNavigation();
-  const [fullname, setFullName] = useState("");
+  const [firstname, setFirstName] = useState("");
+  const [lastname, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,39 +31,68 @@ const SignUp = () => {
   const [error, setError] = useState(null);
 
   const handleSubmit = async () => {
+    console.log("1. Button pressed");
+  
     try {
-
-      const user = { fullname,phone, email, password};
-  if (password !== confirmPassword) {
-    Toast.show("Password does not match", Toast.LENGTH_SHORT);
-    
-  }else{
-    if (fullname === ""||phone === "" ||email === "" || password === "" || role === "" ) {
-      Toast.show("Please fill in your credentials", Toast.LENGTH_SHORT);
-    } else {
+      console.log("2. Inside try");
+  
+      const user = {
+        firstname,
+        lastname,
+        phone,
+        email,
+        password,
+      };
+  
+      console.log("3. User object:", user);
+  
+      if (password !== confirmPassword) {
+        console.log("4. Passwords don't match");
+        Toast.show("Password does not match");
+        return;
+      }
+  
+      if (
+        firstname === "" ||
+        lastname === "" ||
+        phone === "" ||
+        email === "" ||
+        password === "" ||
+        role === ""
+      ) {
+        console.log("5. Missing required fields");
+        Toast.show("Please fill in your credentials");
+        return;
+      }
+  
+      console.log("6. Sending request to:", `${baseUrl}users/signup`);
+  
       const response = await fetch(`${baseUrl}users/signup`, {
         method: "POST",
-        body: JSON.stringify(user),
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify(user),
       });
-
+  
+  
+      const data = await response.json();
+  
+  
       if (response.ok) {
-        const data = await response.json();
-        //console.log("checking out my details",data);
-        AsyncStorage.setItem("userString", JSON.stringify(data));
-          navigation.navigate("AuthVerifyScreen");
+        await AsyncStorage.setItem("userString", JSON.stringify(data));
+        navigation.navigate("SignIn");
+        // navigation.navigate("AuthVerifyScreen");
       } else {
-        Toast.show("Please provide correct credentials", Toast.LENGTH_SHORT);
+        Toast.show(data.message || "Signup failed");
       }
-    }
-
-  }
-    } catch (error) {
-      Toast.show(error.message, Toast.LENGTH_SHORT);
+    } catch (err) {
+      console.log("9. ERROR:", err);
+      Toast.show(err.message);
     }
   };
+
+
 
   const renderUserCategory = (usercategories) => (
     <View style={styles.dropdownItem}>
@@ -72,6 +102,11 @@ const SignUp = () => {
   
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        enabled
+      >
       <ScrollView
         showsVerticalScrollIndicator={false} // Set this prop to false to hide the scrollbar
         contentContainerStyle={styles.scrollContainer}
@@ -79,18 +114,21 @@ const SignUp = () => {
       <View style={{ position: "absolute", top: 25, alignSelf: "center" }}>
         <Text style={styles.headerText}>Create New Account</Text>
       </View>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        enabled
-      >
         <View style={{ marginTop: 70, padding: 10 }}>
           <View style={styles.inputContainer}>
-            <Text style={{ marginLeft: 10 }}>FullName</Text>
+            <Text style={{ marginLeft: 10,flexDirection: 'row' }}>FirstName</Text>
             <Input
-              placeholder="Enter Full Name"
-              onChangeText={(text) => setFullName(text)}
-              value={fullname}
+              placeholder="Enter First Name"
+              onChangeText={(text) => setFirstName(text)}
+              value={firstname}
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={{ marginLeft: 10 }}>LastName</Text>
+            <Input
+              placeholder="Enter Last Name"
+              onChangeText={(text) => setLastName(text)}
+              value={lastname}
             />
           </View>
           <View style={styles.inputContainer}>
@@ -175,8 +213,8 @@ const SignUp = () => {
             <Text style={styles.boldText}>SignIn</Text>
           </Text>
         </TouchableOpacity>
-      </KeyboardAvoidingView>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -188,7 +226,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    justifyContent: "center",
   },
   headerText: {
     fontSize: 25,
@@ -258,6 +295,6 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: -50, // Add paddingBottom to avoid the bouncing behavior
+    paddingBottom: 50, // Add paddingBottom to avoid the bouncing behavior
   }
 });

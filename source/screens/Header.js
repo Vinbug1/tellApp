@@ -1,111 +1,400 @@
-import React, { useState, useContext, useCallback } from "react";
-import { MaterialCommunityIcons, SimpleLineIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-// import AuthGlobal from "../../Context/store/AuthGlobal";
+import React, { useState, useCallback } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   Image,
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Modal,
   ScrollView,
+  ActivityIndicator,
   Platform,
 } from "react-native";
+
+import {
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+
+import { SimpleLineIcons } from "@expo/vector-icons";
+
+import baseUrl from "../../assets/baseUrl";
+
 const { width } = Dimensions.get("window");
 
+const defaultAvatar = require("../../assets/images/use.png");
+
 const Header = () => {
-  const [userName, setUserName] = useState();
-  const [userImage, setUserImage] = useState(require("../../assets/images/use.png")); // Provide the path to your default image
+  const navigation = useNavigation();
+
+  const [user, setUser] = useState(null);
+  const [image, setImage] = useState(defaultAvatar);
+
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const [selectedCase, setSelectedCase] = useState(null);
+
+  const [detailVisible, setDetailVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem("userString")
-        .then((data) => {
-          if (data) {
-            const user = JSON.parse(data);
-            //console.log(user);
-            setUserName(user);
-            // Assuming user.image contains the path to the user's image
-            setUserImage({ uri: user.image || "../../assets/images/use.png"});
-          } else {
-            console.log("Object not found in AsyncStorage");
-          }
-        })
-        .catch((error) => {
-          console.error("Error retrieving object:", error);
-        });
+      loadUser();
 
-      return () => {
-        //setUserDetails();
-      };
+      return () => {};
     }, [])
   );
 
+  const loadUser = async () => {
+    try {
+      const data = await AsyncStorage.getItem("userString");
+
+      if (!data) return;
+
+      const userData = JSON.parse(data);
+
+      setUser(userData);
+
+      if (userData.image) {
+        setImage({ uri: userData.image });
+      }
+
+      fetchCases(userData.token);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const fetchCases = async (token) => {
+    try {
+      setLoading(true);
+
+      const response = await axios.get(
+        `${baseUrl}cases/my`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        setCases(response.data.cases || []);
+      }
+    } catch (err) {
+      console.log(err.response?.data || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pendingCases = cases.filter(
+    (item) => item.status === "pending"
+  );
+
   return (
-    <View style={styles.avatarContainer}>
-      <View style={styles.avatarWrapper}>
-        <Image 
-     source={userImage.url ? { uri: userImage.url } : require('../../assets/images/use.png')}
-     style={styles.avatar}  resizeMode='contain'/>
-        <View style={{ marginTop: 5 }}>
-          <Text style={styles.hdtxt}>Welcome Back</Text>
-          <Text style={styles.txt}>{userName?.fullname}</Text>
-          {/* <Text style={styles.txt}>{userDetails?.phone}</Text> */}
+    <>
+      <View style={styles.container}>
+        <View style={styles.left}>
+          <Image source={image} style={styles.avatar} />
+
+          <View>
+            <Text style={styles.welcome}>
+              Welcome Back
+            </Text>
+
+            <Text style={styles.name}>
+              {user?.fullname}
+            </Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.bellIconWrapper}>
-        <TouchableOpacity style={styles.icon}>
-          <SimpleLineIcons name="bell" size={24} color="#000A83" />
+
+        <TouchableOpacity
+          style={styles.bell}
+          onPress={() => setModalVisible(true)}
+        >
+          <SimpleLineIcons
+            name="bell"
+            size={24}
+            color="#000A83"
+          />
+
+          {pendingCases.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {pendingCases.length}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
-    </View>
+
+      {/* Notification Modal */}
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.title}>
+              Case Notifications
+            </Text>
+
+            {loading ? (
+              <ActivityIndicator
+                size="large"
+                color="#000A83"
+              />
+            ) : pendingCases.length === 0 ? (
+              <Text style={styles.empty}>
+                No pending cases.
+              </Text>
+            ) : (
+              <ScrollView>
+                {pendingCases.map((item) => (
+                  <TouchableOpacity
+                    key={item._id}
+                    style={styles.card}
+                    onPress={() => {
+                      setSelectedCase(item);
+                      setDetailVisible(true);
+                    }}
+                  >
+                    <Text style={styles.cardTitle}>
+                      {item.title}
+                    </Text>
+
+                    <Text
+                      numberOfLines={2}
+                      style={styles.cardBody}
+                    >
+                      {item.description}
+                    </Text>
+
+                    <Text style={styles.status}>
+                      {item.status}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={styles.close}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeText}>
+                Close
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Detail Modal */}
+
+      <Modal
+        visible={detailVisible}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.title}>
+              Case Details
+            </Text>
+
+            {selectedCase && (
+              <>
+                <Text style={styles.label}>
+                  Title
+                </Text>
+
+                <Text style={styles.value}>
+                  {selectedCase.title}
+                </Text>
+
+                <Text style={styles.label}>
+                  Description
+                </Text>
+
+                <Text style={styles.value}>
+                  {selectedCase.description}
+                </Text>
+
+                <Text style={styles.label}>
+                  Defendant
+                </Text>
+
+                <Text style={styles.value}>
+                  {selectedCase.defendantName}
+                </Text>
+
+                <Text style={styles.label}>
+                  Status
+                </Text>
+
+                <Text style={styles.value}>
+                  {selectedCase.status}
+                </Text>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.close}
+              onPress={() => {
+                setDetailVisible(false);
+                setSelectedCase(null);
+              }}
+            >
+              <Text style={styles.closeText}>
+                Close
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 };
 
 export default Header;
 
 const styles = StyleSheet.create({
-  avatarContainer: {
+  container: {
+    marginTop: Platform.OS === "ios" ? 10 : 40,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: Platform.OS === "ios" ? 15 : 45,
-    marginLeft: width * 0.04,
-    marginRight: width * 0.04,
+    alignItems: "center",
   },
-  avatarWrapper: {
+
+  left: {
     flexDirection: "row",
-    alignSelf: "center",
+    alignItems: "center",
   },
+
   avatar: {
-    width: width * 0.16,
-    height: width * 0.16,
-    borderRadius: (width * 0.8) / 2,
-     borderColor: "whitesmoke",
-    //borderWidth: 1,
-    top: -15
+    width: 55,
+    height: 55,
+    borderRadius: 30,
+    marginRight: 10,
   },
-  hdtxt: {
-    paddingLeft: 12,
-    fontSize: 16,
-    fontWeight: "400",
+
+  welcome: {
     color: "#000A83",
+    fontSize: 15,
   },
-  txt: {
-    paddingLeft: 12,
+
+  name: {
+    fontWeight: "bold",
+    fontSize: 17,
+  },
+
+  bell: {
+    padding: 10,
+  },
+
+  badge: {
+    position: "absolute",
+    right: 2,
+    top: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "red",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  badgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modal: {
+    width: "92%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: "80%",
+  },
+
+  title: {
+    fontWeight: "bold",
+    fontSize: 20,
+    marginBottom: 15,
+    textAlign: "center",
+  },
+
+  empty: {
+    textAlign: "center",
+    color: "#888",
+    marginVertical: 30,
+  },
+
+  card: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+
+  cardTitle: {
+    fontWeight: "bold",
     fontSize: 16,
-    fontWeight: "500",
   },
-  bellIconWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginRight: width * 0.02,
+
+  cardBody: {
     marginTop: 5,
+    color: "#555",
   },
-  icon: {
-    padding: 5,
+
+  status: {
+    marginTop: 8,
+    color: "#000A83",
+    fontWeight: "bold",
+  },
+
+  label: {
+    fontWeight: "bold",
+    marginTop: 10,
+  },
+
+  value: {
+    marginTop: 3,
+    color: "#444",
+  },
+
+  close: {
+    backgroundColor: "#000A83",
+    marginTop: 20,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+
+  closeText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
+
+
+

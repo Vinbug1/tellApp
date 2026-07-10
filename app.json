@@ -6,47 +6,63 @@
     "orientation": "portrait",
     "icon": "./assets/images/tellogo.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/snap.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vincent25.tellApp"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
+      "package": "com.vincent25.tellApp",
+      "softwareKeyboardLayoutMode": "resize",
+      "versionCode": 4,
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.INTERNET"
       ],
-      "package": "com.vincent25.tellApp"
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/tellmark.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#000A83"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "custom photos permission",
           "cameraPermission": "Allow $(PRODUCT_NAME) to open the camera",
-          "//": "Disables the microphone permission",
           "microphonePermission": false
         }
       ],
-      "expo-file-system"
+      "expo-file-system",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics"
     ],
     "extra": {
       "eas": {
-        "projectId": "95a7aaca-ede1-405c-91e7-8d008ee671ad"
+        "projectId": "403ad409-d0bb-49f9-a081-de6b00cc316d"
       }
     }
   }
