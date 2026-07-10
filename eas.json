@@ -1,4 +1,4 @@
-{
+ {
   "cli": {
     "version": ">= 6.0.0"
   },
@@ -15,7 +15,8 @@
     },
     "preview": {
       "android": {
-        "distribution": "internal"
+        "distribution": "internal",
+        "buildType": "apk"
       },
       "ios": {
         "distribution": "internal"

@@ -4,7 +4,7 @@ import HomeNavigation from "./HomeNavigation";
 import {  AntDesign,FontAwesome5,Fontisto,MaterialCommunityIcons } from "@expo/vector-icons";
 import AccountNavigation from "./AccountNavigation";
 import CaseNavigation from "./CaseNavigation";
-import NewCaseNavigation from "./NewCaseNavigation";
+// import NewCaseNavigation from "./NewCaseNavigation";
 
 const Tab = createMaterialBottomTabNavigator();
 
@@ -23,16 +23,6 @@ const BottomNavigation = () => {
           tabBarLabel: "Home",
           tabBarIcon: ({ color }) => (
             < AntDesign name="home" color={color} size={26} />
-          ),
-        }}
-      />
-       <Tab.Screen
-        name="NewCaseNavigation"
-        component={NewCaseNavigation}
-        options={{
-          tabBarLabel: "NewCreate",
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="briefcase-plus-outline" color={color} size={24} />
           ),
         }}
       />

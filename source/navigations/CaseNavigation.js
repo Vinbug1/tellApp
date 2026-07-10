@@ -11,7 +11,7 @@ const Stack = createNativeStackNavigator();
 const CaseNavigation = () => {
     return (
         <Stack.Navigator 
-        headerMode="none" // Set the header mode to none
+        // headerMode="none" // Set the header mode to none
           screenOptions={{ headerStyle: { backgroundColor: "black" } }}
         >
           <Stack.Screen

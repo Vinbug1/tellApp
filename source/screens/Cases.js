@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator,Image } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Image } from 'react-native';
 import React, { useEffect, useState, useCallback } from 'react';
 import CaseCard from './CaseCard';
 import baseUrl from '../../assets/baseUrl';
@@ -9,28 +9,48 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
-
 const Cases = () => {
   const [useCase, setUseCase] = useState([]);
-  const [userId, setUserId] = useState('');
-  const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [authToken, setAuthToken] = useState('');
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem('userString')
-        .then((data) => {
-          if (data) {
-            const userDat = JSON.parse(data);
-            setUserId(userDat.userId);
-            setUserEmail(userDat.email);
-          } else {
-            console.log('Object not found in AsyncStorage');
+      // ✅ Fixed: Get token from the correct AsyncStorage key
+      const loadToken = async () => {
+        try {
+          // Try to get token directly first (this is where your login stores it)
+          let token = await AsyncStorage.getItem("token");
+          
+          // If not found, try userString as fallback
+          if (!token) {
+            const userString = await AsyncStorage.getItem("userString");
+            if (userString) {
+              const userData = JSON.parse(userString);
+              token = userData.token || userData.authToken || '';
+            }
           }
-        })
-        .catch((error) => {
-          console.error('Error retrieving object:', error);
-        });
+          
+          if (token) {
+            console.log('✅ Token loaded from AsyncStorage');
+            setAuthToken(token);
+          } else {
+            console.log('❌ No token found in AsyncStorage');
+            Toast.show('Please login again', {
+              duration: Toast.durations.SHORT,
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error retrieving token:', error);
+          Toast.show('Error loading authentication', {
+            duration: Toast.durations.SHORT,
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadToken();
 
       return () => {
         // Clean up if needed
@@ -39,60 +59,137 @@ const Cases = () => {
   );
 
   useEffect(() => {
-    fetchCaseCategories();
-  }, [userEmail]);
+    if (authToken) {
+      fetchCaseCategories();
+    }
+  }, [authToken]);
 
   const fetchCaseCategories = async () => {
     try {
       setIsLoading(true);
-  
-      const response = await axios.get(`${baseUrl}cases/caseComplain?email=${userEmail}`, {
+      
+      const fullUrl = `${baseUrl}cases/my`;
+      console.log('🔍 Fetching from:', fullUrl);
+      console.log('🔑 Token present:', authToken ? 'Yes' : 'No');
+      
+      const response = await axios.get(fullUrl, {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
+        timeout: 10000,
       });
-  
+
       if (response.status === 200) {
-        console.log(response.data.cases.caseCategory);
-        setUseCase(response.data.cases);
+        console.log('✅ Cases fetched successfully:', response.data.cases?.length || 0);
+        setUseCase(response.data.cases || []);
       } 
     } catch (error) {
-      //console.error("Error fetching cases:", error);
-      //Toast.show('Error fetching cases', Toast.SHORT);
+      console.error("❌ Error fetching cases:", error.message);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          Toast.show('Authentication failed. Please login again.', {
+            duration: Toast.durations.LONG,
+          });
+        } else if (error.response.status === 403) {
+          Toast.show('Access denied. Insufficient permissions.', {
+            duration: Toast.durations.LONG,
+          });
+        } else if (error.response.status === 404) {
+          Toast.show('Endpoint not found. Please check server.', {
+            duration: Toast.durations.LONG,
+          });
+        } else {
+          Toast.show(`Server Error: ${error.response.status}`, {
+            duration: Toast.durations.SHORT,
+          });
+        }
+      } else if (error.request) {
+        console.error('❌ No response received from server');
+        console.error('❌ Request details:', error.request);
+        Toast.show('Cannot connect to server. Check your connection.', {
+          duration: Toast.durations.LONG,
+        });
+      } else {
+        console.error('❌ Request setup error:', error.message);
+        Toast.show('Error: ' + error.message, {
+          duration: Toast.durations.SHORT,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   return (
-    <View>
-      {isLoading && <ActivityIndicator size="large" color="#000A83" />}
+    <View style={styles.container}>
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#000A83" />
+          <Text style={styles.loadingText}>Loading cases...</Text>
+        </View>
+      )}
+      
       {!isLoading && useCase.length === 0 && (
-        <View style={styles.avatarWrapper}>
-          <Text style={{ textAlign: 'center', alignSelf: 'center' }}>
+        <View style={styles.noCasesContainer}>
+          <Image 
+            source={defaultImageSource} 
+            style={styles.emptyImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.noCasesText}>
             No cases available
           </Text>
         </View>
       )}
+      
       {!isLoading && useCase.length > 0 && <CaseCard useCase={useCase} />}
     </View>
   );
-
 };
 
 export default Cases;
 
 const styles = StyleSheet.create({
-  avatarWrapper: {
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
+  },
+  noCasesContainer: {
     margin: 9,
-    flexDirection: "row",
-    justifyContent: "space-evenly",
     width: "90%",
-    height: 140,
+    minHeight: 140,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#000A83",
     alignSelf: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  emptyImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 10,
+    opacity: 0.5,
+  },
+  noCasesText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#666',
   },
   avatar: {
     width: 105,
@@ -103,107 +200,3 @@ const styles = StyleSheet.create({
   },
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import { StyleSheet, Text, View, ActivityIndicator  } from 'react-native'
-// import React, { useEffect,useState,useCallback } from 'react';
-// import CaseCard from './CaseCard'
-// import baseUrl from '../../assets/baseUrl';
-// import axios from 'axios';
-// import Toast from "react-native-root-toast";
-// import { useFocusEffect } from "@react-navigation/native";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
-
-
-// const Cases = () => {
-//   const [useCase, setUseCase] = useState([]);
-//   const [userId, setUserId] = useState("");
-//   const [userName, setUserName] = useState();
-//   const [isLoading, setIsLoading] = useState(true);
-  
-
-
-//   useFocusEffect(
-//     useCallback(() => {
-//       AsyncStorage.getItem("userString")
-//         .then((data) => {
-//           if (data) {
-//             const userDat = JSON.parse(data);
-//             //console.log("case for this user",userData.userId);
-//             setUserId(userDat.userId);
-//             setUserName(userDat.fullname);
-//           } else {
-//             console.log("Object not found in AsyncStorage");
-//           }
-//         })
-//         .catch((error) => {
-//           console.error("Error retrieving object:", error);
-//         });
-
-//       return () => {
-//         //setUserDetails();
-//       };
-//     }, [])
-//   );
-
-//   useEffect(() => {
-//     fetchCaseCategories();
-//   }, []);
-
-//   const fetchCaseCategories = async () => {
-//     // let data = JSON.stringify({
-//     //   fullname: userName,
-//     // });
-// let config = {
-//   method: 'get',
-//   maxBodyLength: Infinity,
-//   url: `${baseUrl}cases/${userName}/complainant`,
-//   headers: { 
-//     'Content-Type': 'application/json', 
-//   },
-//   //data : data
-// };
-
-// axios.request(config)
-// .then((response) => {
-//   //console.log("thinking things out",response.data)
-//   if(response.status === 200) {
-//     setUseCase(response.data);
-//     console.log("trying it",useCase);
-//   }else{
-//     Toast.show(response.message, Toast.LENGTH_SHORT);
-//   }
-// })
-// .catch((error) => {
-//   console.log(error);
-// });
-
-//   }
-
-//   return (
-//     <View>
-//    {useCase.length === 0 ? (
-//      <CaseCard useCase={useCase} />
-//      ) : ( 
-//       <Text>Loading...</Text>
-//     )}
-//   </View>
-
-//   )
-// }
-
-// export default Cases
-
-// const styles = StyleSheet.create({})

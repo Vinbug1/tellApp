@@ -1,27 +1,122 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-// import Onboarding from './source/screens/Onboading';
+import { StatusBar, StyleSheet, View, ImageBackground, LogBox } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import MainNavigations from './source/navigations/MainNavigation';
+import crashlytics from '@react-native-firebase/crashlytics';
+
+LogBox.ignoreAllLogs(true);
 
 export default function App() {
-  return (
-    // <View style={styles.container}>
-    <NavigationContainer>
-      <MainNavigations />
-      {/* <Onboarding /> */}
-      <StatusBar style="auto" />
-    </NavigationContainer>
+  const [isLightBackground, setIsLightBackground] = useState(true);
 
-    // </View>
+  useEffect(() => {
+    crashlytics().setCrashlyticsCollectionEnabled(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLightBackground) {
+      StatusBar.setBarStyle('dark-content', true);
+    } else {
+      StatusBar.setBarStyle('light-content', true);
+    }
+  }, [isLightBackground]);
+
+  const handleBackgroundChange = (isLight) => {
+    setIsLightBackground(isLight);
+  };
+
+  return (
+    <NavigationContainer>
+      <View style={styles.container}>
+        <ImageBackground
+          source={require('./assets/images/newsplash.png')}
+          style={styles.imageBackground}
+        >
+          <MainNavigations setBackground={handleBackgroundChange} />
+          <StatusBar />
+        </ImageBackground>
+      </View>
+    </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  imageBackground: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import { StatusBar, StyleSheet, View, ImageBackground,LogBox,  } from 'react-native';
+// import React, { useState, useEffect } from 'react';
+// import { NavigationContainer } from '@react-navigation/native';
+// import MainNavigations from './source/navigations/MainNavigation';
+// import crashlytics from '@react-native-firebase/crashlytics';
+
+
+// LogBox.ignoreAllLogs(true);
+
+// export default function App() {
+//   crashlytics().setCrashlyticsCollectionEnabled(true);
+
+//   const [isLightBackground, setIsLightBackground] = useState(true);
+
+//   useEffect(() => {
+//     if (isLightBackground) {
+//       StatusBar.setBarStyle('dark-content', true);
+//     } else {
+//       StatusBar.setBarStyle('light-content', true);
+//     }
+//   }, [isLightBackground]);
+
+//   const handleBackgroundChange = (isLight) => {
+//     setIsLightBackground(isLight);
+//   };
+
+//   return (
+//     <NavigationContainer>
+//       <View style={styles.container}>
+//         <ImageBackground
+//           source={isLightBackground ? require('./assets/images/newsplash.png') : require('./assets/images/newsplash.png')}
+//           style={styles.imageBackground}
+//         >
+//           <MainNavigations setBackground={handleBackgroundChange} />
+//           <StatusBar />
+//         </ImageBackground>
+//       </View>
+//     </NavigationContainer>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//   },
+//   imageBackground: {
+//     flex: 1,
+//     width: '100%',
+//     height: '100%',
+//   },
+// });
+
+
+
+

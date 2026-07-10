@@ -1,158 +1,212 @@
 import React, { useState } from "react";
 import {
-    View,
-    Text,
-    Image,
-    StyleSheet,
-    SafeAreaView,
-    TouchableOpacity,
-    Platform,
-    KeyboardAvoidingView,
-
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  Platform,
+  KeyboardAvoidingView,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-root-toast";
+import { AntDesign } from "@expo/vector-icons";
+
 import Input from "../utils/Input";
 import SimpleButton from "../utils/SimpleButton";
-import { AntDesign } from '@expo/vector-icons';
+import baseUrl from "../../assets/baseUrl";
+
+const { width, height } = Dimensions.get("window");
 
 const Forgot = () => {
-    const navigation = useNavigation();
-    const [email, setEmail] = useState("");
-    const [error, setError] = useState(null);
+  const navigation = useNavigation();
 
-    const handleSubmit = async () => {
-        try {
-          const user = { email };
-          if (email === "") {
-            Toast.show("Please fill in your credentials", Toast.LENGTH_SHORT);
-          } else {
-            const response = await fetch(`${baseUrl}users/forgot-password`, {
-              method: "POST",
-              body: JSON.stringify(user),
-              headers: {
-                "Content-Type": "application/json",
-              },
-            });
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-            if (response.ok) {
-              const data = await response.json();
-            //   AsyncStorage.setItem("userString", JSON.stringify(data));
-        navigation.navigate("NewPassword");
-            } else {
-              Toast.show("Please provide correct credentials", Toast.LENGTH_SHORT);
-            }
+  const handleSubmit = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedEmail) {
+      Toast.show("Please enter your registered email.", {
+        duration: Toast.durations.SHORT,
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${baseUrl}users/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: trimmedEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await AsyncStorage.setItem("resetEmail", trimmedEmail);
+
+        Toast.show(
+          data.message || "Reset PIN has been sent to your email.",
+          {
+            duration: Toast.durations.LONG,
           }
-        } catch (error) {
-          Toast.show(error.message, Toast.LENGTH_SHORT);
+        );
+
+        navigation.navigate("NewPassword");
+      } else {
+        Toast.show(
+          data.message || "Unable to process your request.",
+          {
+            duration: Toast.durations.LONG,
+          }
+        );
+      }
+    } catch (error) {
+      console.log(error);
+
+      Toast.show(
+        "Network error. Please check your internet connection.",
+        {
+          duration: Toast.durations.LONG,
         }
-    };
-    
-    return (
-        <SafeAreaView style={styles.container}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{position:"absolute", top:65,left: 35 }}>
-            <AntDesign name="left" size={20} color="black" />
-             </TouchableOpacity>
-            <View style={{  top:15, alignSelf: "center" }}>
-                <Text style={styles.headerText}>Forgot Password</Text>
-            </View>
-            <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                enabled
-            >
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                <View style={{ marginTop: 70, padding: 10 }}>
-                    <View style={{  top: 75, alignItems: "center", width: "85%" }}>
-                        <Text style={styles.boldText}> Please enter your registered email. </Text>
-                            <Text style={styles.normalText}>  We will send an email instruction to your registered email to reset your password. </Text>
-                    </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <AntDesign name="left" size={22} color="black" />
+      </TouchableOpacity>
 
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerText}>Forgot Password</Text>
+      </View>
 
-                    <View style={styles.inputContainer}>
-                        <Text style={{ marginLeft: 10,marginTop:20 }}>Email</Text>
-                        <Input
-                            placeholder="Email"
-                            onChangeText={(text) => setEmail(text)}
-                            value={email}
-                        />
-                    </View>
-                </View>
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={styles.instructionsContainer}>
+          <Text style={styles.boldText}>
+            Enter your registered email address
+          </Text>
 
-                <View style={{ marginTop: 180 }}>
-                    <SimpleButton
-                        onPress={() => handleSubmit()}
-                        buttonText="Continue"
-                    />
-                </View>
+          <Text style={styles.normalText}>
+            We'll send a verification PIN to your registered email so you can
+            reset your password.
+          </Text>
+        </View>
 
-            </KeyboardAvoidingView>
-        </SafeAreaView>
-    )
-}
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Email</Text>
 
-export default Forgot
+          <Input
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+        </View>
 
+        <View style={styles.buttonContainer}>
+          <SimpleButton
+            onPress={handleSubmit}
+            buttonText={loading ? "Sending..." : "Continue"}
+            disabled={loading}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+};
+
+export default Forgot;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#FFFFFF",
-        justifyContent: "center",
-    },
-    headerText: {
-        fontSize: 25,
-        fontWeight: '900',
-        alignSelf: "center",
-    },
-    subHeaderText: {
-        fontSize: 13,
-        alignSelf: "center",
-    },
-    image: {
-        width: "100%",
-    },
-    inputContainer: {
-        marginTop: 95,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+  },
 
-    errorText: {
-        color: "red",
-        fontSize: 16,
-        alignSelf: "center",
-        marginTop: 10,
-    },
-    signUpLink: {
-        alignSelf: "center",
-        position: "absolute",
-        bottom: 35,
-        flexDirection: "row",
-    },
-    signUpLinkText: {
-        color: "black",
-        fontSize: 14,
-        fontWeight: "normal",
-        color: "#000A83",
-    },
-    signUpLinkTt: {
-        color: "black",
-        fontSize: 14,
-        fontWeight: "normal",
-        color: "#000A83",
-    },
-    normalText: {
-        fontSize: 14,// Other styles for normal text
-        //margin: 35,
-    },
-    boldText: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: "#000A83",
+  backButton: {
+    position: "absolute",
+    top: height * 0.08,
+    left: width * 0.08,
+    zIndex: 100,
+    padding: 10,
+  },
 
-        // Other styles for bold text
-    },
-    marginRight: {
-        margin: 35, // Adjust the spacing as needed
-    },
+  headerContainer: {
+    alignSelf: "center",
+    marginTop: height * 0.08,
+  },
 
+  headerText: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#000A83",
+  },
 
+  keyboardContainer: {
+    flex: 1,
+  },
+
+  instructionsContainer: {
+    marginTop: height * 0.1,
+    alignItems: "center",
+    paddingHorizontal: 25,
+  },
+
+  boldText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000A83",
+    textAlign: "center",
+  },
+
+  normalText: {
+    marginTop: 10,
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
+  inputContainer: {
+    marginTop: height * 0.05,
+    paddingHorizontal: 20,
+  },
+
+  inputLabel: {
+    marginLeft: 10,
+    marginBottom: 5,
+    fontWeight: "500",
+  },
+
+  buttonContainer: {
+    marginTop: height * 0.18,
+    paddingHorizontal: 20,
+  },
 });
+
+
+

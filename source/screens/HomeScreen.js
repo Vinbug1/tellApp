@@ -1,53 +1,78 @@
-import { StyleSheet, Text, View, SafeAreaView, ScrollView } from 'react-native';
-import React from 'react';
-import Header from './Header';
-import Cases from './Cases';
-import OtherService from './OtherService';
-import CaseCategory from './caseCat/CaseCategory';
-import DailyVerse from './DailyVerse';
+import React from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  ScrollView,
+} from "react-native";
+
+import Header from "./Header";
+import DailyVerse from "./DailyVerse";
+import Cases from "./Cases";
+import OtherService from "./OtherService";
+import CaseCategory from "./caseCat/CaseCategory";
 
 const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
-        <View style={{ padding: 8 }}>
-          <Header />
-        </View>
-      <ScrollView >
-        {/* <Text style={styles.sectionTitle}>Daily Verse</Text> */}
-        <View style={{ padding: 5}}>
-        <DailyVerse />
+      <Header />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Daily Verse */}
+        <View style={styles.section}>
+          <DailyVerse />
         </View>
 
-        <View style={{ padding: 5}}>
-        <Text style={styles.sectionTitle}>Case</Text>
-        <Cases />
+        {/* Cases */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Cases</Text>
+          <Cases />
         </View>
 
-        <View style={{ padding: 5}}>
-        <Text style={styles.sectionTitle}>Quick Action</Text>
-        <OtherService />
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <OtherService />
         </View>
 
-        <View style={{ padding: 5}}>
-        <Text style={styles.sectionTitle}>Case Category</Text>
-        <CaseCategory />
+        {/* Categories */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Case Categories</Text>
+          <CaseCategory />
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+export default HomeScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
+
+  scrollContent: {
+    paddingHorizontal: 10,
+    paddingBottom: 30,
+  },
+
+  section: {
+    marginTop: 15,
+  },
+
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'normal',
-    margin: 5,
-    left: 18,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000A83",
+    marginBottom: 10,
+    marginLeft: 5,
   },
 });
 
-export default HomeScreen;
+
