@@ -1,22 +1,25 @@
 {
   "expo": {
-    "name": "tellApp",
+    "name": "Tell",
     "slug": "tellApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/tellogo.png",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.vincent25.tellApp"
+      "bundleIdentifier": "com.vincent25.tellApp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.vincent25.tellApp",
       "softwareKeyboardLayoutMode": "resize",
-      "versionCode": 4,
+      "versionCode": 8,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -24,8 +27,9 @@
         "android.permission.INTERNET"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
+        "monochromeImage": "./assets/images/adaptive-icon-monochrome.png",
+        "backgroundColor": "#000A83"
       }
     },
     "web": {
@@ -35,7 +39,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/tellmark.png",
+          "image": "./assets/images/Wimg.jpeg",
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#000A83"
         }
@@ -58,7 +63,8 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics"
+      "@react-native-firebase/crashlytics",
+      "expo-font"
     ],
     "extra": {
       "eas": {
