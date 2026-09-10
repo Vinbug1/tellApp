@@ -133,7 +133,7 @@ const SignIn = () => {
           <View style={styles.headerContainer}>
             <Text style={styles.headerText}>Welcome Back</Text>
             <Image
-              source={require("../../assets/images/tell-logo-box.png")}
+              source={require("../../assets/images/marklogo.png")}
               style={styles.logo}
               resizeMode="contain"
             />

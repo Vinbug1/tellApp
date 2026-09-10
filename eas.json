@@ -24,7 +24,7 @@
       }
     },
     "production": {
-      "android": {},
+      "autoIncrement": true,
       "ios": {}
     }
   },
