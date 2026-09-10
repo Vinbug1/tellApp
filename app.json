@@ -11,7 +11,11 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.vincent25.tellApp"
+      "bundleIdentifier": "com.vincent25.tellApp",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.vincent25.tellApp",
@@ -43,8 +47,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "custom photos permission",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to open the camera",
+          "photosPermission": "Allow tellApp to access your photos so you can attach images to cases and update your profile.",
           "microphonePermission": false
         }
       ],
@@ -52,6 +55,9 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "useFrameworks": "static"
+          },
           "android": {
             "minSdkVersion": 24
           }
