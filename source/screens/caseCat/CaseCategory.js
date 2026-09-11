@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react';
 import CaseCatCard from './CaseCatCard';
 import baseUrl from '../../../assets/baseUrl';
 import axios from 'axios';
-import Toast from "react-native-root-toast";
+import { showToast } from "../../utils/toast";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -23,7 +23,7 @@ const CaseCategory = () => {
       const token = await AsyncStorage.getItem("token");
 
       if (!token) {
-        Toast.show("Session expired. Please sign in again.", Toast.LENGTH_SHORT);
+        showToast("Session expired. Please sign in again.");
         return;
       }
 
@@ -38,7 +38,7 @@ const CaseCategory = () => {
     } catch (error) {
       const message =
         error.response?.data?.message || "Failed to load case categories.";
-      Toast.show(message, Toast.LENGTH_SHORT);
+      showToast(message);
       console.error("Error fetching case categories:", error);
     } finally {
       setLoading(false);

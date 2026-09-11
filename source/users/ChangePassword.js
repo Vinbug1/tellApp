@@ -11,13 +11,13 @@ import {
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-root-toast";
 import axios from "axios";
 import { AntDesign } from "@expo/vector-icons";
 
 import Input from "../utils/Input";
 import SimpleButton from "../utils/SimpleButton";
 import baseUrl from "../../assets/baseUrl";
+import { showToast } from "../utils/toast";
 
 const { width, height } = Dimensions.get("window");
 
@@ -25,6 +25,9 @@ const ChangePassword = () => {
   const navigation = useNavigation();
 
   const [email, setEmail] = useState("");
+  const [pin, setPin] = useState("");
+  const [token, setToken] = useState("");
+  const [requiresPin, setRequiresPin] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,12 +39,20 @@ const ChangePassword = () => {
     useCallback(() => {
       const loadUser = async () => {
         try {
+          const resetEmail = await AsyncStorage.getItem("resetEmail");
           const userString = await AsyncStorage.getItem("userString");
+          const storedToken = await AsyncStorage.getItem("token");
+          const user = userString ? JSON.parse(userString) : null;
 
-          if (userString) {
-            const user = JSON.parse(userString);
+          if (resetEmail) {
+            setEmail(resetEmail);
+            setRequiresPin(true);
+          } else if (user?.email) {
             setEmail(user.email);
+            setRequiresPin(false);
           }
+
+          setToken(storedToken || user?.token || "");
         } catch (err) {
           console.log(err);
         }
@@ -55,19 +66,23 @@ const ChangePassword = () => {
     try {
       setError("");
 
+      if (!email) {
+        showToast("No account email found. Request a reset PIN first.");
+        return;
+      }
+
+      if (requiresPin && !pin.trim()) {
+        showToast("Please enter the PIN sent to your email");
+        return;
+      }
+
       if (!newPassword || !confirmPassword) {
-        Toast.show(
-          "Please enter your new password",
-          Toast.durations.SHORT
-        );
+        showToast("Please enter your new password");
         return;
       }
 
       if (newPassword.length < 6) {
-        Toast.show(
-          "Password must be at least 6 characters",
-          Toast.durations.SHORT
-        );
+        showToast("Password must be at least 6 characters");
         return;
       }
 
@@ -78,23 +93,30 @@ const ChangePassword = () => {
 
       setLoading(true);
 
+      const payload = {
+        email,
+        newPassword,
+      };
+      if (requiresPin) {
+        payload.pin = pin.trim();
+      }
+
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      if (token && !requiresPin) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await axios.post(
         `${baseUrl}users/reset-password`,
-        {
-          email,
-          newPassword,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        payload,
+        { headers }
       );
 
-      Toast.show(
-        response.data.message || "Password reset successful",
-        Toast.durations.LONG
-      );
+      await AsyncStorage.removeItem("resetEmail");
+
+      showToast(response.data.message || "Password reset successful", true);
 
       navigation.reset({
         index: 0,
@@ -103,10 +125,7 @@ const ChangePassword = () => {
     } catch (err) {
       console.log(err);
 
-      Toast.show(
-        err.response?.data?.message || "Unable to reset password",
-        Toast.durations.SHORT
-      );
+      showToast(err.response?.data?.message || "Unable to reset password");
     } finally {
       setLoading(false);
     }
@@ -140,6 +159,19 @@ const ChangePassword = () => {
         </View>
 
         <View style={styles.inputContainer}>
+          {requiresPin ? (
+            <>
+              <Text style={styles.label}>Reset PIN</Text>
+              <Input
+                placeholder="Enter the PIN sent to your email"
+                value={pin}
+                onChangeText={setPin}
+                keyboardType="number-pad"
+                autoCapitalize="none"
+              />
+            </>
+          ) : null}
+
           <Text style={styles.label}>New Password</Text>
 
           <Input

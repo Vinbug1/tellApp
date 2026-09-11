@@ -11,7 +11,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Input from "../utils/Input";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-root-toast";
+import { showToast } from "../utils/toast";
 import SimpleButton from "../utils/SimpleButton";
 import { Dropdown } from "react-native-element-dropdown";
 import salves from "../utils/Salve";
@@ -87,12 +87,12 @@ const CreatCase = () => {
     } = formData;
   
     if (Object.values(formData).some((field) => field === "")) {
-      Toast.show("Please fill in all fields", Toast.LENGTH_SHORT);
+      showToast("Please fill in all fields");
       return;
     }
   
     try {
-      const caseDetail = { ...formData, user: user?.userId, tkn: user?.token };
+      const caseDetail = { ...formData, user: user?.userId };
       await AsyncStorage.setItem("caseString", JSON.stringify(caseDetail));
       
       // Clear the form after successful submission
@@ -111,7 +111,7 @@ const CreatCase = () => {
       
       navigation.navigate("MoreCaseScreen");
     } catch (error) {
-      Toast.show(error.message, Toast.LENGTH_SHORT);
+      showToast(error.message);
     }
   };
 

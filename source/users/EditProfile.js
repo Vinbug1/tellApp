@@ -14,7 +14,7 @@ import {
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Input from "../utils/Input";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-root-toast";
+import { showToast } from "../utils/toast";
 import SimpleButton from "../utils/SimpleButton";
 import baseUrl from "../../assets/baseUrl";
 import * as ImagePicker from "expo-image-picker";
@@ -39,7 +39,7 @@ const EditProfile = () => {
       if (Platform.OS !== "web") {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-          Toast.show("Sorry, we need camera roll permissions to make this work!", Toast.LENGTH_SHORT);
+          showToast("Sorry, we need photo library permission to update your profile.");
         }
       }
     })();
@@ -106,7 +106,7 @@ const EditProfile = () => {
       setLoading(true);
       // Validate inputs
       if (!firstname || !lastname || !phone || !email) {
-        Toast.show("Please fill in all fields", Toast.LENGTH_SHORT);
+        showToast("Please fill in all fields");
         return;
       }
 
@@ -119,7 +119,7 @@ const EditProfile = () => {
       const token = userData?.token || (await AsyncStorage.getItem('token'));
 
       if (!userId || !token) {
-        Toast.show("Please login again", Toast.LENGTH_SHORT);
+        showToast("Please login again");
         navigation.reset({
           index:0,
           routes:[{name:"SignIn"}]
@@ -137,13 +137,12 @@ const EditProfile = () => {
   
       // Add image if selected
       if (image) {
-        const imageUri = Platform.OS === 'ios' ? image.replace('file://', '') : image;
         const filename = image.split('/').pop();
         const match = /\.(\w+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : 'image/jpeg';
         
         formData.append('profileImage', {
-          uri: imageUri,
+          uri: image,
           name: filename,
           type: type,
         });
@@ -174,23 +173,22 @@ const EditProfile = () => {
         if (data.userDetails) {
           const mergedUser = { ...userData, ...data.userDetails };
           await AsyncStorage.setItem('userString', JSON.stringify(mergedUser));
+          await AsyncStorage.setItem('userDetails', JSON.stringify(mergedUser));
         }
 
         if (data.token) {
           await AsyncStorage.setItem('token', data.token);
         }
-        
-        Toast.show("Profile updated successfully!", Toast.LENGTH_LONG);
-        
-        // Go back or navigate to profile screen
+
+        showToast("Profile updated successfully!", true);
         navigation.goBack();
       } else {
         console.log('❌ Update failed:', data);
-        Toast.show(data.message || "Failed to update profile", Toast.LENGTH_SHORT);
+        showToast(data.message || "Failed to update profile");
       }
     } catch (error) {
       console.error('❌ Error updating profile:', error);
-      Toast.show(error.message || "An error occurred", Toast.LENGTH_SHORT);
+      showToast(error.message || "An error occurred");
     } finally{
       setLoading(false);
     }

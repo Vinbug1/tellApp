@@ -85,7 +85,10 @@ const SignIn = () => {
           return;
         }
 
-        navigation.navigate("MainScreen");
+        navigation.getParent()?.getParent()?.reset({
+          index: 0,
+          routes: [{ name: "MainScreen" }],
+        });
 
         // Navigate based on role — must match exactly what backend returns
 

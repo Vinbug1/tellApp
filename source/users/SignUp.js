@@ -13,7 +13,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Input from "../utils/Input";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-root-toast";
+import { showToast } from "../utils/toast";
 import SimpleButton from "../utils/SimpleButton";
 import baseUrl from "../../assets/baseUrl";
 import { Dropdown } from "react-native-element-dropdown";
@@ -42,13 +42,14 @@ const SignUp = () => {
         phone,
         email,
         password,
+        role,
       };
   
       console.log("3. User object:", user);
   
       if (password !== confirmPassword) {
         console.log("4. Passwords don't match");
-        Toast.show("Password does not match");
+        showToast("Password does not match");
         return;
       }
   
@@ -61,7 +62,7 @@ const SignUp = () => {
         role === ""
       ) {
         console.log("5. Missing required fields");
-        Toast.show("Please fill in your credentials");
+        showToast("Please fill in your credentials");
         return;
       }
   
@@ -84,11 +85,11 @@ const SignUp = () => {
         navigation.navigate("SignIn");
         // navigation.navigate("AuthVerifyScreen");
       } else {
-        Toast.show(data.message || "Signup failed");
+        showToast(data.message || "Signup failed");
       }
     } catch (err) {
       console.log("9. ERROR:", err);
-      Toast.show(err.message);
+      showToast(err.message);
     }
   };
 

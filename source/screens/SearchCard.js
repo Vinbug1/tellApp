@@ -1,73 +1,109 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { Octicons, Entypo } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import baseUrl from "../../assets/baseUrl";
+import { shouldShowDecisionButtons } from "../utils/identity";
+import { showToast } from "../utils/toast";
 
-
-const { width } = Dimensions.get("window");
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
-const SearchCard = ({ originalCaseData, searchResult, userName }) => {
+const SearchCard = ({ originalCaseData, searchResult, user }) => {
   const [userDetails, setUserDetails] = useState([]);
+  const [decisionLoadingId, setDecisionLoadingId] = useState(null);
   const navigation = useNavigation();
 
   useEffect(() => {
     setUserDetails(searchResult?.length ? searchResult : originalCaseData || []);
   }, [originalCaseData, searchResult]);
 
-  const shouldShowButtons = useMemo(() => (item) => {
-    if (item.status === 'Pending') {
-      if (userName === item.user.fullname || userName !== item.defendantName) return false;
-      return userName === item.defendantName;
-    }
-    return item.status !== 'Accept';
-  }, [userName]);
-
-  const handleDecision = async (decision) => {
+  const handleDecision = async (item, decision) => {
     try {
-      // Update the code accordingly based on your implementation
-      // ...
+      const caseId = item?._id;
+      if (!caseId) return;
+
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        showToast("Please login again");
+        return;
+      }
+
+      setDecisionLoadingId(caseId);
+      await axios.put(
+        `${baseUrl}cases/${caseId}/decision`,
+        { case: caseId, decision },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setUserDetails((prev) =>
+        prev.map((row) => (row._id === caseId ? { ...row, status: decision } : row))
+      );
+      showToast(`Case ${decision === "Accept" ? "accepted" : "declined"} successfully`);
     } catch (error) {
       console.error('Error updating case status:', error);
+      showToast(error.response?.data?.message || "Failed to update case status");
+    } finally {
+      setDecisionLoadingId(null);
     }
   };
 
-  return (
-    <ScrollView>
-      {userDetails.map((item, index) => (
-        <TouchableOpacity key={index} onPress={() => navigation.navigate("DetailListScreen", { item })}>
-          <View style={styles.avatarWrapper}>
-            <Image
-              resizeMode="cover"
-              source={item.user?.image ? { uri: item.user.image } : defaultImageSource}
-              style={styles.avatar}
-            />
-            <View style={styles.content}>
-              <Text style={styles.cattxt}>{item.caseCategory?.caseNumber}</Text>
-              <Text style={styles.txt}>{item.caseType}</Text>
-              <View style={styles.dotIndicator}>
-                <View style={[styles.dot, { backgroundColor: item.status === 'Accept' ? 'green' : item.status === 'Declined' ? 'red' : 'yellow' }]} />
-                <Text style={styles.statusText}>{item.status}</Text>
-              </View>
-              {shouldShowButtons(item) && (
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity style={styles.acceptButton} onPress={() => handleDecision('Accept')}>
-                    <Octicons name="check" size={24} color="white" />
-                    <Text style={styles.buttonText}>Accept</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.declineButton} onPress={() => handleDecision('Decline')}>
-                    <Entypo name="cross" size={24} color="white" />
-                    <Text style={styles.buttonText}>Decline</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+  const renderItem = ({ item }) => (
+    <TouchableOpacity onPress={() => navigation.navigate("DetailListScreen", { item })}>
+      <View style={styles.avatarWrapper}>
+        <Image
+          resizeMode="cover"
+          source={item.user?.image ? { uri: item.user.image } : defaultImageSource}
+          style={styles.avatar}
+        />
+        <View style={styles.content}>
+          <Text style={styles.cattxt}>{item.caseCategory?.caseNumber}</Text>
+          <Text style={styles.txt}>{item.caseType}</Text>
+          <View style={styles.dotIndicator}>
+            <View style={[styles.dot, { backgroundColor: item.status === 'Accept' ? 'green' : item.status === 'Declined' ? 'red' : 'yellow' }]} />
+            <Text style={styles.statusText}>{item.status}</Text>
           </View>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+          {shouldShowDecisionButtons(user, item) && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.acceptButton}
+                onPress={() => handleDecision(item, 'Accept')}
+                disabled={decisionLoadingId === item._id}
+              >
+                <Octicons name="check" size={24} color="white" />
+                <Text style={styles.buttonText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.declineButton}
+                onPress={() => handleDecision(item, 'Decline')}
+                disabled={decisionLoadingId === item._id}
+              >
+                <Entypo name="cross" size={24} color="white" />
+                <Text style={styles.buttonText}>Decline</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <FlatList
+      data={userDetails}
+      keyExtractor={(item, index) => `${item._id || index}`}
+      renderItem={renderItem}
+    />
   );
 };
+
+export default SearchCard;
 
 const styles = StyleSheet.create({
   avatarWrapper: {
@@ -153,6 +189,3 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
 });
-
-export default SearchCard;
-

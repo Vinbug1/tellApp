@@ -10,6 +10,7 @@ import MoreCase from '../screens/MoreCase';
 import CaseDetails from '../screens/CaseDetails';
 import SearchCard from '../screens/SearchCard';
 import CaseDetailList from '../screens/caseCat/CaseDetailList';
+import SupportScreen from '../screens/SupportScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -69,6 +70,11 @@ const HomeNavigation = () => {
           <Stack.Screen 
             name="DetailListScreen"
             component={CaseDetailList }
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="SupportScreen"
+            component={SupportScreen}
             options={{ headerShown: false }}
           /> 
       

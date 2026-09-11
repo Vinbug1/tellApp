@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { SafeAreaView, View, Text, Dimensions, StyleSheet, Image, TouchableOpacity } from "react-native";
 import Swiper from "react-native-swiper";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import SimpleButton from "../utils/SimpleButton";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -47,11 +48,16 @@ const Onboarding = () => {
     };
   }, [currentSlide]);
 
+  const finishOnboarding = async () => {
+    await AsyncStorage.setItem("onboardingSeen", "true");
+    navigation.navigate("SignIn");
+  };
+
   const renderSkipButton = () => {
     return (
       <TouchableOpacity
         style={styles.skipButton}
-        onPress={() => navigation.navigate("SignIn")}
+        onPress={finishOnboarding}
       >
         <Text style={styles.skipButtonText}>
           {currentSlide < data.length - 1 ? "Skip" : "Get Started"}
@@ -63,7 +69,7 @@ const Onboarding = () => {
   const renderGetStartedButton = () => {
     return (
         <SimpleButton
-          onPress={() => navigation.navigate("SignIn")}
+          onPress={finishOnboarding}
           buttonText="Get Started"
         />
     );
