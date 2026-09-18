@@ -11,7 +11,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ReactNativePinView from "react-native-pin-view";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import Toast from "react-native-root-toast";
+import { showToast } from "../utils/toast";
 import SimpleButton from "../utils/SimpleButton";
 import axios from "axios";
 import baseUrl from "../../assets/baseUrl";
@@ -57,7 +57,7 @@ const Authcode = () => {
 
   const handleSubmitPress = async () => {
     if (enteredPin.length !== 6) {
-      Toast.show("Please enter the 6-digit PIN", Toast.LENGTH_SHORT);
+      showToast("Please enter the 6-digit PIN");
       return;
     }
 
@@ -75,13 +75,13 @@ const Authcode = () => {
       );
 
       if (response.status === 200) {
-        Toast.show("Account verified successfully!", Toast.LENGTH_SHORT);
+        showToast("Account verified successfully!");
         navigation.navigate("SignIn");
       }
     } catch (error) {
       const message =
         error.response?.data?.message || "Verification failed. Please try again.";
-      Toast.show(message, Toast.LENGTH_SHORT);
+      showToast(message);
     } finally {
       setLoading(false);
     }

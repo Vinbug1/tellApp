@@ -18,9 +18,9 @@ import { Dropdown } from "react-native-element-dropdown";
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { AntDesign } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system/legacy';
 import axios from 'axios';
 import baseUrl from "../../assets/baseUrl";
+import { showToast } from "../utils/toast";
 import { Ionicons } from '@expo/vector-icons';
 
 const MoreCase = () => {
@@ -44,8 +44,12 @@ const MoreCase = () => {
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem("caseString")
-        .then((data) => {
+      const loadDraft = async () => {
+        try {
+          const data = await AsyncStorage.getItem("caseString");
+          const authToken = await AsyncStorage.getItem("token");
+          if (authToken) setToken(authToken);
+
           if (data) {
             const userData = JSON.parse(data);
             setCaseCategory(userData.caseCategory);
@@ -59,29 +63,14 @@ const MoreCase = () => {
             setSalvation(userData.salvation);
             setCaseType(userData.caseType);
             setUser(userData.user);
-            setToken(userData.tkn);
             setResolutionMethod(userData.resolutionMethod || '');
           }
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error("Error retrieving object:", error);
-        });
-
-      return () => {
-        setCaseCategory('');
-        setDefendantName('');
-        setDefendantEmail('');
-        setDefendantPhone('');
-        setChurch('');
-        setPosition('');
-        setDepartment('');
-        setRelationship('');
-        setSalvation('');
-        setCaseType('');
-        setUser('');
-        setToken('');
-        setResolutionMethod('');
+        }
       };
+
+      loadDraft();
     }, [])
   );
 
@@ -107,6 +96,21 @@ const MoreCase = () => {
 
   const handleSubmit = async () => {
     try {
+      if (!description?.trim()) {
+        showToast("Please describe the case");
+        return;
+      }
+      if (!resolutionMethod) {
+        showToast("Please select a resolution method");
+        return;
+      }
+
+      const authToken = token || (await AsyncStorage.getItem("token"));
+      if (!authToken) {
+        showToast("Please login again");
+        return;
+      }
+
       let formData = new FormData();
 
       formData.append('caseCategory', caseCategory);
@@ -131,36 +135,31 @@ const MoreCase = () => {
           { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
         );
 
-        const base64ImageData = await FileSystem.readAsStringAsync(
-          manipulatedImage.uri,
-          { encoding: FileSystem.EncodingType.Base64 }
-        );
-
         formData.append("image", {
           uri: manipulatedImage.uri,
           type: "image/jpeg",
           name: "image.jpg",
-          data: base64ImageData,
         });
       }
 
-      let config = {
+      const response = await axios.request({
         method: 'post',
         url: `${baseUrl}cases/`,
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'multipart/form-data',
         },
         data: formData,
-      };
-
-      const response = await axios.request(config);
+      });
 
       if (response.status === 201) {
+        await AsyncStorage.removeItem("caseString");
+        showToast("Case submitted successfully!");
         navigation.navigate("HomePage");
       }
     } catch (error) {
       console.error('Error during form submission:', error.response?.data || error.message || error);
+      showToast(error.response?.data?.message || "Submission failed. Please try again.");
     }
   };
 

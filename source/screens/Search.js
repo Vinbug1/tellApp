@@ -127,7 +127,7 @@ const Search = () => {
         <SearchCard
           originalCaseData={caseData}
           searchResult={searchResult}
-          userName={userDetails?.fullname}
+          user={userDetails}
         />
       ) : (
         <View style={styles.noDataContainer}>

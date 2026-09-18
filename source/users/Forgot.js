@@ -11,12 +11,12 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from "react-native-root-toast";
 import { AntDesign } from "@expo/vector-icons";
 
 import Input from "../utils/Input";
 import SimpleButton from "../utils/SimpleButton";
 import baseUrl from "../../assets/baseUrl";
+import { showToast } from "../utils/toast";
 
 const { width, height } = Dimensions.get("window");
 
@@ -30,9 +30,7 @@ const Forgot = () => {
     const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedEmail) {
-      Toast.show("Please enter your registered email.", {
-        duration: Toast.durations.SHORT,
-      });
+      showToast("Please enter your registered email.");
       return;
     }
 
@@ -54,30 +52,21 @@ const Forgot = () => {
       if (response.ok) {
         await AsyncStorage.setItem("resetEmail", trimmedEmail);
 
-        Toast.show(
+        showToast(
           data.message || "Reset PIN has been sent to your email.",
-          {
-            duration: Toast.durations.LONG,
-          }
+          true
         );
 
         navigation.navigate("NewPassword");
       } else {
-        Toast.show(
-          data.message || "Unable to process your request.",
-          {
-            duration: Toast.durations.LONG,
-          }
-        );
+        showToast(data.message || "Unable to process your request.", true);
       }
     } catch (error) {
       console.log(error);
 
-      Toast.show(
+      showToast(
         "Network error. Please check your internet connection.",
-        {
-          duration: Toast.durations.LONG,
-        }
+        true
       );
     } finally {
       setLoading(false);

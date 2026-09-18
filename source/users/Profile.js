@@ -1,7 +1,7 @@
 import React from "react";
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import ProfileHeader from "./ProfileHeader";
-import { useNavigation } from "@react-navigation/native";
+import { CommonActions, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
@@ -15,9 +15,21 @@ const Profile = () => {
           "userId",
           "userDetails",
           "userString",
+          "caseString",
+          "resetEmail",
         ]);
-    
-        navigation.navigate("SignIn");
+
+        let root = navigation;
+        while (root.getParent()) {
+          root = root.getParent();
+        }
+
+        root.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: "User", params: { screen: "SignIn" } }],
+          })
+        );
       } catch (error) {
         console.log("Logout failed:", error);
       }

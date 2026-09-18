@@ -27,12 +27,12 @@ import StyleBtn from "../utils/StyleBtn";
 import { Dropdown } from "react-native-element-dropdown";
 import salves from "../utils/Salve";
 import cases from "../utils/Case";
-import Toast from "react-native-root-toast";
+import { shouldShowDecisionButtons } from "../utils/identity";
+import { showToast } from "../utils/toast";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from "expo-file-system/legacy";
 
-const { height } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
 const emptyForm = {
@@ -52,7 +52,6 @@ const CaseCardList = () => {
   const navigation = useNavigation();
 
   const [user, setUser] = useState(null);
-  const [userName, setUserName] = useState("");
   const [caseData, setCaseData] = useState([]);
   const [tkn, setTkn] = useState("");
   const [loading, setLoading] = useState(true);
@@ -72,25 +71,32 @@ const CaseCardList = () => {
   const fetchUserData = useCallback(async () => {
     try {
       const data = await AsyncStorage.getItem("userString");
-      if (data) {
-        const userDetails = JSON.parse(data);
-        setUserName(userDetails.firstname);
-        setUser(userDetails.userId);
-        setTkn(userDetails.token);
-      }
+      if (!data) return { userId: null, token: null, userDetails: null };
+
+      const userDetails = JSON.parse(data);
+      setUser(userDetails);
+      setTkn(userDetails.token);
+      return {
+        userId: userDetails.userId,
+        token: userDetails.token,
+        userDetails,
+      };
     } catch (error) {
       console.error("Error retrieving user:", error);
+      return { userId: null, token: null, userDetails: null };
     }
   }, []);
 
-  const getData = useCallback(async () => {
-    if (!user || !tkn) return;
+  const getData = useCallback(async (token, userId) => {
+    const authToken = token || tkn;
+    const ownerId = userId || user?.userId;
+    if (!ownerId || !authToken) return;
     setLoading(true);
     try {
       const response = await axios.get(`${baseUrl}cases/my`, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${tkn}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
       if (response.status === 200) {
@@ -121,7 +127,7 @@ const CaseCardList = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchUserData().then(getData);
+      fetchUserData().then(({ token, userId }) => getData(token, userId));
       fetchCaseCategories();
     }, [fetchUserData, getData, fetchCaseCategories])
   );
@@ -141,23 +147,23 @@ const CaseCardList = () => {
 
   const handleStep1Next = async () => {
     if (Object.values(formData).some((field) => field === "")) {
-      Toast.show("Please fill in all fields", Toast.LENGTH_SHORT);
+      showToast("Please fill in all fields");
       return;
     }
     await AsyncStorage.setItem(
       "caseString",
-      JSON.stringify({ ...formData, user, tkn })
+      JSON.stringify({ ...formData, user: user?.userId })
     );
     setStep(2);
   };
 
   const handleStep2Submit = async () => {
     if (!description) {
-      Toast.show("Please describe the case", Toast.LENGTH_SHORT);
+      showToast("Please describe the case");
       return;
     }
     if (!resolutionMethod) {
-      Toast.show("Please select a resolution method", Toast.LENGTH_SHORT);
+      showToast("Please select a resolution method");
       return;
     }
 
@@ -171,7 +177,7 @@ const CaseCardList = () => {
       fd.append("salvation", formData.salvation);
       fd.append("description", description);
       fd.append("caseType", formData.caseType);
-      fd.append("user", user);
+      fd.append("user", user?.userId);
       fd.append("defendantName", formData.defendantName);
       fd.append("defendantPhone", formData.defendantPhone);
       fd.append("defendantEmail", formData.defendantEmail);
@@ -183,14 +189,10 @@ const CaseCardList = () => {
           [{ resize: { width: 300, height: 300 } }],
           { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
         );
-        const base64 = await FileSystem.readAsStringAsync(manipulated.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
         fd.append("image", {
           uri: manipulated.uri,
           type: "image/jpeg",
           name: "image.jpg",
-          data: base64,
         });
       }
 
@@ -202,15 +204,14 @@ const CaseCardList = () => {
       });
 
       if (response.status === 201) {
-        Toast.show("Case submitted successfully!", Toast.LENGTH_SHORT);
+        showToast("Case submitted successfully!");
         resetModal();
-        getData();
+        getData(tkn, user?.userId);
       }
     } catch (error) {
       console.error("Error submitting case:", error.response?.data || error.message);
-      Toast.show(
-        error.response?.data?.message || "Submission failed. Please try again.",
-        Toast.LENGTH_SHORT
+      showToast(
+        error.response?.data?.message || "Submission failed. Please try again."
       );
     }
   };
@@ -232,14 +233,8 @@ const CaseCardList = () => {
   };
 
   const shouldShowButtons = useCallback(
-    (item) => {
-      if (userName === item.user?.firstname && item.status === "Pending") return false;
-      if (userName === item.defendantName && item.status === "Pending") return true;
-      if (userName === item.defendantName && item.status === "Accept") return false;
-      if (userName !== item.defendantName && item.status === "Pending") return false;
-      return item.status !== "Accept";
-    },
-    [userName]
+    (item) => shouldShowDecisionButtons(user, item),
+    [user]
   );
 
   // ── Was missing entirely — buttons called this but it didn't exist ──
@@ -268,11 +263,10 @@ const CaseCardList = () => {
           }
         );
 
-        Toast.show(
-          `Case ${decision === "Accept" ? "accepted" : "declined"} successfully`,
-          Toast.LENGTH_SHORT
+        showToast(
+          `Case ${decision === "Accept" ? "accepted" : "declined"} successfully`
         );
-        getData();
+        getData(tkn, user?.userId);
       } catch (error) {
         console.error("Error updating case status:", error.response?.data || error.message);
         Alert.alert(
@@ -283,7 +277,7 @@ const CaseCardList = () => {
         setDecisionLoadingId(null);
       }
     },
-    [tkn, getData]
+    [tkn, getData, user]
   );
 
   const renderCaseItem = ({ item }) => (

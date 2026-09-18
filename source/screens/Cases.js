@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, Image } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Image, FlatList } from 'react-native';
 import React, { useEffect, useState, useCallback } from 'react';
 import CaseCard from './CaseCard';
 import baseUrl from '../../assets/baseUrl';
@@ -147,7 +147,13 @@ const Cases = () => {
         </View>
       )}
       
-      {!isLoading && useCase.length > 0 && <CaseCard useCase={useCase} />}
+      {!isLoading && useCase.length > 0 && (
+        <FlatList
+          data={useCase}
+          keyExtractor={(item, index) => `${item._id || index}`}
+          renderItem={({ item }) => <CaseCard item={item} />}
+        />
+      )}
     </View>
   );
 };

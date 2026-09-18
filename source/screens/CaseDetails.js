@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, SafeAreaView, Text, TextInput, View, Modal, TouchableOpacity, KeyboardAvoidingView, Image, ScrollView } from 'react-native';
+import {
+  StyleSheet, SafeAreaView, Text, TextInput, View, Modal, TouchableOpacity, KeyboardAvoidingView, Image, ScrollView, Platform
+} from 'react-native';
 import StyleBtn from "../utils/StyleBtn";
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import baseUrl from "../../assets/baseUrl";
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Input from "../utils/Input";
 import { Dropdown } from "react-native-element-dropdown";
 import calls from "../utils/Salve";
@@ -28,7 +31,7 @@ const CaseDetails = ({ route }) => {
 
   useEffect(() => {
     console.log('caseDetail:', caseData);
-    setCaseId(caseData._Id);
+    setCaseId(caseData._id);
   }, []);
 
 
@@ -99,49 +102,55 @@ const CaseDetails = ({ route }) => {
     </View>
   );
   const handleSubmit = async () => {
-    let data = new FormData();
-    data.append('call', call);
-    data.append('description', description);
-    data.append('case', caseId);
-    images.forEach((image, index) => {
-      data.append(`images[${index}][fieldname]`, image.fieldname);
-      data.append(`images[${index}][originalname]`, image.originalname);
-      data.append(`images[${index}][encoding]`, image.encoding);
-      data.append(`images[${index}][mimetype]`, image.mimetype);
-      data.append(`images[${index}][size]`, image.size);
-      data.append(`images[${index}][url]`, image.url);
-    });
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.log("No auth token");
+        return;
+      }
 
-    console.log("searcfhing things out:", data);
+      const resolvedCaseId = caseId || caseData._id;
+      if (!resolvedCaseId) {
+        console.log("Missing case id");
+        return;
+      }
 
-    let config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: `${baseUrl}cases/`,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        // ...data.getHeaders()
-      },
-      data: data
-    };
-
-    axios.request(config)
-      .then((response) => {
-        if (response.status === 201) {
-          //console.log(JSON.stringify(response.data));
-          navigation.navigate("HomePage");
-        }
-      })
-      .catch((error) => {
-        console.log(error);
+      let data = new FormData();
+      data.append('call', call);
+      data.append('description', description);
+      data.append('case', resolvedCaseId);
+      images.forEach((image, index) => {
+        data.append(`images[${index}][fieldname]`, image.fieldname);
+        data.append(`images[${index}][originalname]`, image.originalname);
+        data.append(`images[${index}][encoding]`, image.encoding);
+        data.append(`images[${index}][mimetype]`, image.mimetype);
+        data.append(`images[${index}][size]`, image.size);
+        data.append(`images[${index}][url]`, image.url);
       });
+
+      const response = await axios.request({
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: `${baseUrl}cases/`,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        data: data
+      });
+
+      if (response.status === 201) {
+        navigation.navigate("HomePage");
+      }
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   
   const renderImages = () => (
     <View style={{ width: '100%', height: 200, alignSelf: "center" }}>
       <Text style={{ left: 12, top: 20, color: "black", fontSize: 16, fontWeight: "bold" }}>Evidence:</Text>
-      {caseData.images.map((image, index) => (
+      {(caseData.images || []).map((image, index) => (
         <View key={index} style={styles.selectedImageContainer}>
           <View style={styles.selectedImageRow}>
             <Image

@@ -95,7 +95,7 @@ const Header = () => {
   };
 
   const pendingCases = cases.filter(
-    (item) => item.status === "pending"
+    (item) => String(item.status).toLowerCase() === "pending"
   );
 
   return (
@@ -110,7 +110,9 @@ const Header = () => {
             </Text>
 
             <Text style={styles.name}>
-              {user?.fullname}
+              {user?.firstname
+                ? `${user.firstname}${user.lastname ? ` ${user.lastname}` : ""}`
+                : user?.fullname || ""}
             </Text>
           </View>
         </View>

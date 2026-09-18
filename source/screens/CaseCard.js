@@ -15,18 +15,18 @@ import {
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import baseUrl from "../../assets/baseUrl";
+import { shouldShowDecisionButtons } from "../utils/identity";
 
 const { width } = Dimensions.get("window");
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
-const CaseCard = ({ useCase }) => {
+const CaseCard = ({ item, useCase }) => {
   const navigation = useNavigation();
   const [selectedDecision, setSelectedDecision] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Handle case data safely
-  const caseData = useCase && useCase.length > 0 ? useCase[0] : null;
+  const caseData = item || (useCase && useCase.length > 0 ? useCase[0] : null);
 
   // Set initial decision state when caseData changes
   useEffect(() => {
@@ -39,7 +39,9 @@ const CaseCard = ({ useCase }) => {
   useEffect(() => {
     const fetchUserDetails = async () => {
       try {
-        const userDataString = await AsyncStorage.getItem("userDetails");
+        const userDataString =
+          (await AsyncStorage.getItem("userDetails")) ||
+          (await AsyncStorage.getItem("userString"));
         if (userDataString) {
           const userData = JSON.parse(userDataString);
           setUserDetails(userData);
@@ -129,19 +131,6 @@ const CaseCard = ({ useCase }) => {
     );
   }
 
-  // Handle accepted cases
-  if (selectedDecision === "Accept") {
-    return (
-      <SafeAreaView>
-        <View style={styles.noPendingCasesContainer}>
-          <Text style={styles.noPendingCasesText}>
-            You do not have any pending cases.
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView>
       <TouchableOpacity onPress={navigateToDetail} disabled={isLoading} activeOpacity={0.8}>
@@ -181,7 +170,7 @@ const CaseCard = ({ useCase }) => {
               </Text>
             </View>
 
-            {selectedDecision === "Pending" && (
+            {selectedDecision === "Pending" && shouldShowDecisionButtons(userDetails, caseData) && (
               <View style={styles.buttonContainer}>
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#000A83" />

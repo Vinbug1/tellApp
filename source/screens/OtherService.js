@@ -37,7 +37,7 @@ const ITEMS = [
   },
   {
     name: "Help/support",
-    screen: "BillScreen",
+    screen: "SupportScreen",
     icon: ({ color }) => (
       <Fontisto
         name="info"
