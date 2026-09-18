@@ -31,6 +31,7 @@ import { shouldShowDecisionButtons } from "../utils/identity";
 import { showToast } from "../utils/toast";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+
 const { width, height } = Dimensions.get("window");
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
@@ -381,7 +382,7 @@ const CaseCardList = () => {
                 onPress={() => (step === 2 ? setStep(1) : resetModal())}
               >
                 <AntDesign
-                  name={step === 2 ? "arrowleft" : "closecircleo"}
+                  name={step === 2 ? "arrow-left" : "close-circle"}
                   size={28}
                   color="#000A83"
                 />
@@ -390,7 +391,7 @@ const CaseCardList = () => {
                 {step === 1 ? "Case Details (1/2)" : "More Details (2/2)"}
               </Text>
               <TouchableOpacity onPress={resetModal}>
-                <AntDesign name="closecircleo" size={28} color="#000A83" />
+                <AntDesign name="close-circle" size={28} color="#000A83" />
               </TouchableOpacity>
             </View>
 

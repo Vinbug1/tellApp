@@ -1,15 +1,43 @@
 import { StatusBar, StyleSheet, View, ImageBackground } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { RootSiblingParent } from 'react-native-root-siblings';
+import * as SplashScreen from 'expo-splash-screen';
 import MainNavigations from './source/navigations/MainNavigation';
 import crashlytics from '@react-native-firebase/crashlytics';
 
+// Keep native splash visible until we explicitly hide it
+SplashScreen.preventAutoHideAsync();
+
+const MIN_SPLASH_TIME = 2500; // milliseconds — adjust to taste
+
 export default function App() {
   const [isLightBackground, setIsLightBackground] = useState(true);
+  const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
     crashlytics().setCrashlyticsCollectionEnabled(true);
+  }, []);
+
+  useEffect(() => {
+    async function prepare() {
+      const startTime = Date.now();
+
+      try {
+        // any real async setup can go here (auth check, config fetch, etc.)
+      } catch (e) {
+        console.warn(e);
+      }
+
+      const elapsed = Date.now() - startTime;
+      const remaining = MIN_SPLASH_TIME - elapsed;
+      if (remaining > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+
+      setAppIsReady(true);
+    }
+    prepare();
   }, []);
 
   useEffect(() => {
@@ -24,10 +52,20 @@ export default function App() {
     setIsLightBackground(isLight);
   };
 
+  const onLayoutRootView = useCallback(async () => {
+    if (appIsReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null; // native splash (from app.json) stays on screen during this
+  }
+
   return (
     <RootSiblingParent>
       <NavigationContainer>
-        <View style={styles.container}>
+        <View style={styles.container} onLayout={onLayoutRootView}>
           <ImageBackground
             source={require('./assets/images/newsplash.png')}
             style={styles.imageBackground}
