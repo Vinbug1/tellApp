@@ -13,6 +13,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.vincent25.tellApp",
       "appleTeamId": "AQ4BDWF8K9",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -58,11 +59,16 @@
       [
         "expo-build-properties",
         {
+          "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": ["RNFBApp", "RNFBCrashlytics"]
+          },
           "android": {
             "minSdkVersion": 24
           }
         }
       ],
+      "./plugins/withFirebaseNonModularHeaders.js",
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
       "expo-font"
