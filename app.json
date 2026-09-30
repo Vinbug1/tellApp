@@ -12,6 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vincent25.tellApp",
+      "appleTeamId": "AQ4BDWF8K9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
