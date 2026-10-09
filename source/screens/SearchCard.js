@@ -6,19 +6,22 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import baseUrl from "../../assets/baseUrl";
 import { shouldShowDecisionButtons } from "../utils/identity";
-import { caseInvolvesUser } from "../utils/moderation";
 import ModerationActions from "./ModerationActions";
 import { showToast } from "../utils/toast";
 
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
-const SearchCard = ({ originalCaseData, searchResult, user }) => {
+const SearchCard = ({ originalCaseData, searchResult, user, onBlocked }) => {
   const [userDetails, setUserDetails] = useState([]);
   const [decisionLoadingId, setDecisionLoadingId] = useState(null);
   const navigation = useNavigation();
 
   useEffect(() => {
-    setUserDetails(searchResult?.length ? searchResult : originalCaseData || []);
+    if (Array.isArray(searchResult)) {
+      setUserDetails(searchResult);
+      return;
+    }
+    setUserDetails(originalCaseData || []);
   }, [originalCaseData, searchResult]);
 
   const handleDecision = async (item, decision) => {
@@ -57,8 +60,11 @@ const SearchCard = ({ originalCaseData, searchResult, user }) => {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity onPress={() => navigation.navigate("DetailListScreen", { item })}>
-      <View style={styles.avatarWrapper}>
+    <View style={styles.avatarWrapper}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate("DetailListScreen", { item })}
+        style={styles.openCase}
+      >
         <Image
           resizeMode="cover"
           source={item.user?.image ? { uri: item.user.image } : defaultImageSource}
@@ -71,35 +77,30 @@ const SearchCard = ({ originalCaseData, searchResult, user }) => {
             <View style={[styles.dot, { backgroundColor: item.status === 'Accept' ? 'green' : item.status === 'Declined' ? 'red' : 'yellow' }]} />
             <Text style={styles.statusText}>{item.status}</Text>
           </View>
-          {shouldShowDecisionButtons(user, item) && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.acceptButton}
-                onPress={() => handleDecision(item, 'Accept')}
-                disabled={decisionLoadingId === item._id}
-              >
-                <Octicons name="check" size={24} color="white" />
-                <Text style={styles.buttonText}>Accept</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.declineButton}
-                onPress={() => handleDecision(item, 'Decline')}
-                disabled={decisionLoadingId === item._id}
-              >
-                <Entypo name="cross" size={24} color="white" />
-                <Text style={styles.buttonText}>Decline</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <ModerationActions
-            caseItem={item}
-            onBlocked={(userId) =>
-              setUserDetails((prev) => prev.filter((row) => !caseInvolvesUser(row, userId)))
-            }
-          />
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+      {shouldShowDecisionButtons(user, item) && (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.acceptButton}
+            onPress={() => handleDecision(item, 'Accept')}
+            disabled={decisionLoadingId === item._id}
+          >
+            <Octicons name="check" size={24} color="white" />
+            <Text style={styles.buttonText}>Accept</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.declineButton}
+            onPress={() => handleDecision(item, 'Decline')}
+            disabled={decisionLoadingId === item._id}
+          >
+            <Entypo name="cross" size={24} color="white" />
+            <Text style={styles.buttonText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <ModerationActions caseItem={item} onBlocked={onBlocked} />
+    </View>
   );
 
   return (
@@ -116,14 +117,18 @@ export default SearchCard;
 const styles = StyleSheet.create({
   avatarWrapper: {
     margin: 9,
-    flexDirection: "row",
-    justifyContent: "space-evenly",
     width: "95%",
-    height: 140,
+    minHeight: 140,
+    padding: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#000A83",
     alignSelf: "center",
+  },
+  openCase: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
   },
   avatar: {
     width: 105,
@@ -171,7 +176,8 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    top: 6,
+    marginTop: 8,
+    width: "100%",
     paddingHorizontal: 6,
   },
   acceptButton: {

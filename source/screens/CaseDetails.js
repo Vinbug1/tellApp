@@ -234,6 +234,9 @@ const CaseDetails = ({ route }) => {
           <Ionicons name="arrow-back-circle-outline" size={33} color="#000A83" />
         </TouchableOpacity>
       <Text style={{ textAlign: "center", fontSize: 16, fontWeight: "800", top: -25 }}>Case Details </Text>
+      <View style={{ width: "85%", alignSelf: "center" }}>
+        <ModerationActions caseItem={caseData} onBlocked={() => navigation.goBack()} />
+      </View>
       </View>
       <ScrollView
         showsVerticalScrollIndicator={false} // Set this prop to false to hide the scrollbar
@@ -255,9 +258,6 @@ const CaseDetails = ({ route }) => {
 
           <View style={{ height: 95, width: "85%", borderRadius: 5, borderWidth: 1,  bottom: 65,alignSelf:"center" }}>
             <Text style={{ paddingLeft: 15 }}>{caseData.description}</Text>
-          </View>
-          <View style={{ width: "85%", alignSelf: "center", bottom: 50 }}>
-            <ModerationActions caseItem={caseData} onBlocked={() => navigation.goBack()} />
           </View>
         </View>
       </ScrollView>

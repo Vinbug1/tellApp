@@ -3,9 +3,27 @@ import baseUrl from "../../assets/baseUrl";
 
 const BLOCKED_KEY = "blockedUserIds";
 
-const ownerIdOf = (item) => {
-  const owner = item?.user;
-  return owner?._id || owner?.userId || (typeof owner === "string" ? owner : null);
+const idOf = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  return value._id || value.userId || null;
+};
+
+const ownerIdOf = (item) => idOf(item?.user);
+
+const defendantIdOf = (item) =>
+  item?.defendantId || idOf(item?.defendant) || null;
+
+const readStoredUser = async () => {
+  const raw =
+    (await AsyncStorage.getItem("userDetails")) ||
+    (await AsyncStorage.getItem("userString"));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 };
 
 const readJson = async (response) => {
@@ -33,7 +51,7 @@ export const otherPartyId = (me, item) => {
   if (!item) return null;
   const mine = String(me?.userId || me?._id || "");
   const ownerId = ownerIdOf(item);
-  const defendantId = item.defendantId || null;
+  const defendantId = defendantIdOf(item);
 
   if (mine && ownerId && String(ownerId) === mine) {
     return defendantId ? String(defendantId) : null;
@@ -46,7 +64,7 @@ export const otherPartyId = (me, item) => {
 export const caseInvolvesUser = (item, userId) => {
   const id = String(userId || "");
   if (!id) return false;
-  return String(ownerIdOf(item) || "") === id || String(item?.defendantId || "") === id;
+  return String(ownerIdOf(item) || "") === id || String(defendantIdOf(item) || "") === id;
 };
 
 export const loadBlockedIds = async () => {
@@ -77,17 +95,14 @@ export const forgetBlock = async (userId) => {
 
 const isCaseBlocked = (item, blocked, me) => {
   const mine = String(me?.userId || me?._id || "");
-  const ids = [ownerIdOf(item), item?.defendantId].filter(Boolean).map(String);
+  const ids = [ownerIdOf(item), defendantIdOf(item)].filter(Boolean).map(String);
   return ids.some((id) => id !== mine && blocked.has(id));
 };
 
 export const withoutBlockedCases = async (cases) => {
   const blocked = await loadBlockedIds();
   if (!blocked.size) return cases || [];
-  const raw =
-    (await AsyncStorage.getItem("userDetails")) ||
-    (await AsyncStorage.getItem("userString"));
-  const me = raw ? JSON.parse(raw) : null;
+  const me = await readStoredUser();
   return (cases || []).filter((item) => !isCaseBlocked(item, blocked, me));
 };
 

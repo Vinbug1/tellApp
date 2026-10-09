@@ -13,7 +13,7 @@ import baseUrl from "../../assets/baseUrl";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
-import { withoutBlockedCases } from "../utils/moderation";
+import { caseInvolvesUser, withoutBlockedCases } from "../utils/moderation";
 
 const Search = () => {
   const navigation = useNavigation();
@@ -129,6 +129,9 @@ const Search = () => {
           originalCaseData={caseData}
           searchResult={searchResult}
           user={userDetails}
+          onBlocked={(userId) =>
+            setCaseData((prev) => prev.filter((row) => !caseInvolvesUser(row, userId)))
+          }
         />
       ) : (
         <View style={styles.noDataContainer}>

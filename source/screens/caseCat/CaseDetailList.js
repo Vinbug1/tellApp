@@ -107,6 +107,9 @@ const renderImages = () => (
         </TouchableOpacity>
 
       <Text style={{ textAlign: "center", fontSize: 16, fontWeight: "800", top: -25 }}>Case Details </Text>
+      <View style={{ width: "85%", alignSelf: "center" }}>
+        <ModerationActions caseItem={item} onBlocked={() => navigation.goBack()} />
+      </View>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContainer}
@@ -127,9 +130,6 @@ const renderImages = () => (
 
           <View style={{ height: 95, width: "85%", borderRadius: 5, borderWidth: 1,bottom: -65, alignSelf:"center" }}>
             <Text style={{ paddingLeft: 15 }}>{item?.description}</Text>
-          </View>
-          <View style={{ width: "85%", alignSelf: "center", marginTop: 80 }}>
-            <ModerationActions caseItem={item} onBlocked={() => navigation.goBack()} />
           </View>
       </View>
         </ScrollView>

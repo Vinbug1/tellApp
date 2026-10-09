@@ -10,17 +10,27 @@ const REASONS = [
   { label: "Inappropriate", value: "inappropriate" },
 ];
 
+const readStoredUser = async () => {
+  const raw =
+    (await AsyncStorage.getItem("userDetails")) ||
+    (await AsyncStorage.getItem("userString"));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 const ModerationActions = ({ caseItem, onBlocked }) => {
   const [otherId, setOtherId] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [pickingReason, setPickingReason] = useState(false);
 
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const raw =
-        (await AsyncStorage.getItem("userDetails")) ||
-        (await AsyncStorage.getItem("userString"));
-      const me = raw ? JSON.parse(raw) : null;
+      const me = await readStoredUser();
       if (active) setOtherId(otherPartyId(me, caseItem));
     };
     load();
@@ -34,6 +44,7 @@ const ModerationActions = ({ caseItem, onBlocked }) => {
   const submitReport = async (reason) => {
     try {
       setBusy(true);
+      setPickingReason(false);
       await reportUser({
         reportedUserId: otherId,
         reason,
@@ -46,16 +57,6 @@ const ModerationActions = ({ caseItem, onBlocked }) => {
     } finally {
       setBusy(false);
     }
-  };
-
-  const confirmReport = () => {
-    Alert.alert("Report user", "Why are you reporting this account?", [
-      ...REASONS.map((reason) => ({
-        text: reason.label,
-        onPress: () => submitReport(reason.value),
-      })),
-      { text: "Cancel", style: "cancel" },
-    ]);
   };
 
   const confirmBlock = () => {
@@ -72,10 +73,10 @@ const ModerationActions = ({ caseItem, onBlocked }) => {
               setBusy(true);
               await blockUser(otherId);
               showToast("User blocked");
+              setBusy(false);
               onBlocked?.(otherId);
             } catch (error) {
               showToast(error.message || "Could not block user");
-            } finally {
               setBusy(false);
             }
           },
@@ -85,13 +86,33 @@ const ModerationActions = ({ caseItem, onBlocked }) => {
   };
 
   return (
-    <View style={styles.row}>
-      <TouchableOpacity style={styles.report} onPress={confirmReport} disabled={busy}>
-        <Text style={styles.reportText}>Report</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.block} onPress={confirmBlock} disabled={busy}>
-        <Text style={styles.blockText}>Block</Text>
-      </TouchableOpacity>
+    <View>
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={styles.report}
+          onPress={() => setPickingReason((open) => !open)}
+          disabled={busy}
+        >
+          <Text style={styles.reportText}>Report</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.block} onPress={confirmBlock} disabled={busy}>
+          <Text style={styles.blockText}>Block</Text>
+        </TouchableOpacity>
+      </View>
+      {pickingReason && (
+        <View style={styles.reasons}>
+          {REASONS.map((reason) => (
+            <TouchableOpacity
+              key={reason.value}
+              style={styles.reason}
+              onPress={() => submitReport(reason.value)}
+              disabled={busy}
+            >
+              <Text style={styles.reasonText}>{reason.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -124,6 +145,24 @@ const styles = StyleSheet.create({
   },
   blockText: {
     color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  reasons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  reason: {
+    marginRight: 8,
+    marginBottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    backgroundColor: "#EEF0FF",
+  },
+  reasonText: {
+    color: "#000A83",
     fontSize: 12,
     fontWeight: "600",
   },
