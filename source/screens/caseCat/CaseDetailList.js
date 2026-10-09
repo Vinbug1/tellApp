@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from "@react-navigation/native";
+import ModerationActions from "../ModerationActions";
 
 const CaseDetailList = ({ route }) => {
   const navigation = useNavigation();
@@ -106,6 +107,9 @@ const renderImages = () => (
         </TouchableOpacity>
 
       <Text style={{ textAlign: "center", fontSize: 16, fontWeight: "800", top: -25 }}>Case Details </Text>
+      <View style={{ width: "85%", alignSelf: "center" }}>
+        <ModerationActions caseItem={item} onBlocked={() => navigation.goBack()} />
+      </View>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContainer}

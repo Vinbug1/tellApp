@@ -28,6 +28,8 @@ import { Dropdown } from "react-native-element-dropdown";
 import salves from "../utils/Salve";
 import cases from "../utils/Case";
 import { shouldShowDecisionButtons } from "../utils/identity";
+import { caseInvolvesUser, withoutBlockedCases } from "../utils/moderation";
+import ModerationActions from "./ModerationActions";
 import { showToast } from "../utils/toast";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -100,8 +102,9 @@ const CaseCardList = () => {
         },
       });
       if (response.status === 200) {
-        setCaseData(response.data.cases);
-        setNoData(response.data.cases.length === 0);
+        const visible = await withoutBlockedCases(response.data.cases);
+        setCaseData(visible);
+        setNoData(visible.length === 0);
       } else {
         setNoData(true);
       }
@@ -281,8 +284,12 @@ const CaseCardList = () => {
   );
 
   const renderCaseItem = ({ item }) => (
-    <TouchableOpacity onPress={() => navigation.navigate("DetailListScreen", { item })} activeOpacity={0.8}>
-      <View style={styles.avatarWrapper}>
+    <View style={styles.avatarWrapper}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate("DetailListScreen", { item })}
+        activeOpacity={0.8}
+        style={styles.openCase}
+      >
         <Image resizeMode="cover" source={defaultImageSource} style={styles.avatar} />
         <View style={styles.contentContainer}>
           <Text style={styles.cattxt} numberOfLines={1} ellipsizeMode="tail">
@@ -307,33 +314,40 @@ const CaseCardList = () => {
             />
             <Text style={styles.statusText}>{item.status}</Text>
           </View>
-          {shouldShowButtons(item) && (
-            <View style={styles.buttonContainer}>
-              {decisionLoadingId === item._id ? (
-                <ActivityIndicator size="small" color="#000A83" />
-              ) : (
-                <>
-                  <TouchableOpacity
-                    style={styles.acceptButton}
-                    onPress={() => handleDecision(item._id, "Accept")}
-                  >
-                    <Octicons name="check" size={16} color="white" />
-                    <Text style={styles.buttonText} numberOfLines={1}>Accept</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.declineButton}
-                    onPress={() => handleDecision(item._id, "Decline")}
-                  >
-                    <Entypo name="cross" size={16} color="white" />
-                    <Text style={styles.buttonText} numberOfLines={1}>Decline</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+        </View>
+      </TouchableOpacity>
+      {shouldShowButtons(item) && (
+        <View style={styles.buttonContainer}>
+          {decisionLoadingId === item._id ? (
+            <ActivityIndicator size="small" color="#000A83" />
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.acceptButton}
+                onPress={() => handleDecision(item._id, "Accept")}
+              >
+                <Octicons name="check" size={16} color="white" />
+                <Text style={styles.buttonText} numberOfLines={1}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.declineButton}
+                onPress={() => handleDecision(item._id, "Decline")}
+              >
+                <Entypo name="cross" size={16} color="white" />
+                <Text style={styles.buttonText} numberOfLines={1}>Decline</Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
-      </View>
-    </TouchableOpacity>
+      )}
+      <ModerationActions
+        caseItem={item}
+        onBlocked={(userId) => {
+          setCaseData((prev) => (prev || []).filter((row) => !caseInvolvesUser(row, userId)));
+          setNoData(false);
+        }}
+      />
+    </View>
   );
 
   if (loading) {
@@ -344,7 +358,7 @@ const CaseCardList = () => {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {noData ? (
+      {noData || caseData.length === 0 ? (
         <View style={styles.noPendingCasesContainer}>
           <Text style={styles.noPendingCasesText}>No cases found for this user.</Text>
         </View>
@@ -547,8 +561,7 @@ export default CaseCardList;
 const styles = StyleSheet.create({
   avatarWrapper: {
     margin: 9,
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     width: "92%",
     borderRadius: 8,
     borderWidth: 1,
@@ -556,6 +569,11 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingVertical: 14,
     paddingHorizontal: 12,
+  },
+  openCase: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
   },
   avatar: {
     width: 85,
@@ -608,6 +626,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 8,
+    marginTop: 8,
+    width: "100%",
   },
   acceptButton: {
     flex: 1,

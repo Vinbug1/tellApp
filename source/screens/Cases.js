@@ -6,6 +6,7 @@ import axios from 'axios';
 import Toast from 'react-native-root-toast';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { caseInvolvesUser, withoutBlockedCases } from '../utils/moderation';
 
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
@@ -82,7 +83,7 @@ const Cases = () => {
 
       if (response.status === 200) {
         console.log('✅ Cases fetched successfully:', response.data.cases?.length || 0);
-        setUseCase(response.data.cases || []);
+        setUseCase(await withoutBlockedCases(response.data.cases || []));
       } 
     } catch (error) {
       console.error("❌ Error fetching cases:", error.message);
@@ -151,7 +152,14 @@ const Cases = () => {
         <FlatList
           data={useCase}
           keyExtractor={(item, index) => `${item._id || index}`}
-          renderItem={({ item }) => <CaseCard item={item} />}
+          renderItem={({ item }) => (
+            <CaseCard
+              item={item}
+              onBlocked={(userId) =>
+                setUseCase((prev) => prev.filter((row) => !caseInvolvesUser(row, userId)))
+              }
+            />
+          )}
         />
       )}
     </View>

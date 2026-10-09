@@ -16,11 +16,12 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import baseUrl from "../../assets/baseUrl";
 import { shouldShowDecisionButtons } from "../utils/identity";
+import ModerationActions from "./ModerationActions";
 
 const { width } = Dimensions.get("window");
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
-const CaseCard = ({ item, useCase }) => {
+const CaseCard = ({ item, useCase, onBlocked }) => {
   const navigation = useNavigation();
   const [selectedDecision, setSelectedDecision] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
@@ -133,8 +134,13 @@ const CaseCard = ({ item, useCase }) => {
 
   return (
     <SafeAreaView>
-      <TouchableOpacity onPress={navigateToDetail} disabled={isLoading} activeOpacity={0.8}>
-        <View style={styles.avatarWrapper}>
+      <View style={styles.avatarWrapper}>
+        <TouchableOpacity
+          onPress={navigateToDetail}
+          disabled={isLoading}
+          activeOpacity={0.8}
+          style={styles.openCase}
+        >
           <Image 
             resizeMode="cover" 
             source={userImage} 
@@ -169,37 +175,36 @@ const CaseCard = ({ item, useCase }) => {
                  "Pending"}
               </Text>
             </View>
-
-            {selectedDecision === "Pending" && shouldShowDecisionButtons(userDetails, caseData) && (
-              <View style={styles.buttonContainer}>
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#000A83" />
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={styles.acceptButton}
-                      onPress={() => handleDecision("Accept")}
-                      disabled={isLoading}
-                    >
-                      <Octicons name="check" size={16} color="white" />
-                      <Text style={styles.buttonText} numberOfLines={1}>Accept</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={styles.declineButton}
-                      onPress={() => handleDecision("Decline")}
-                      disabled={isLoading}
-                    >
-                      <Entypo name="cross" size={16} color="white" />
-                      <Text style={styles.buttonText} numberOfLines={1}>Decline</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
+          </View>
+        </TouchableOpacity>
+        {selectedDecision === "Pending" && shouldShowDecisionButtons(userDetails, caseData) && (
+          <View style={styles.buttonContainer}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#000A83" />
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.acceptButton}
+                  onPress={() => handleDecision("Accept")}
+                  disabled={isLoading}
+                >
+                  <Octicons name="check" size={16} color="white" />
+                  <Text style={styles.buttonText} numberOfLines={1}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.declineButton}
+                  onPress={() => handleDecision("Decline")}
+                  disabled={isLoading}
+                >
+                  <Entypo name="cross" size={16} color="white" />
+                  <Text style={styles.buttonText} numberOfLines={1}>Decline</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
-        </View>
-      </TouchableOpacity>
+        )}
+        <ModerationActions caseItem={caseData} onBlocked={onBlocked} />
+      </View>
     </SafeAreaView>
   );
 };
@@ -207,8 +212,7 @@ const CaseCard = ({ item, useCase }) => {
 const styles = StyleSheet.create({
   avatarWrapper: {
     margin: 9,
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     width: "92%",
     borderRadius: 8,
     borderWidth: 1,
@@ -216,6 +220,11 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingVertical: 14,
     paddingHorizontal: 12,
+  },
+  openCase: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
   },
   avatar: {
     width: 85,
@@ -262,6 +271,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
+    marginTop: 8,
+    width: "100%",
   },
   acceptButton: {
     flex: 1,
