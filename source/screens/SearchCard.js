@@ -6,6 +6,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import baseUrl from "../../assets/baseUrl";
 import { shouldShowDecisionButtons } from "../utils/identity";
+import { caseInvolvesUser } from "../utils/moderation";
+import ModerationActions from "./ModerationActions";
 import { showToast } from "../utils/toast";
 
 const defaultImageSource = require("../../assets/images/briefcase.png");
@@ -89,6 +91,12 @@ const SearchCard = ({ originalCaseData, searchResult, user }) => {
               </TouchableOpacity>
             </View>
           )}
+          <ModerationActions
+            caseItem={item}
+            onBlocked={(userId) =>
+              setUserDetails((prev) => prev.filter((row) => !caseInvolvesUser(row, userId)))
+            }
+          />
         </View>
       </View>
     </TouchableOpacity>

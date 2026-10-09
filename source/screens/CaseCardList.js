@@ -28,6 +28,8 @@ import { Dropdown } from "react-native-element-dropdown";
 import salves from "../utils/Salve";
 import cases from "../utils/Case";
 import { shouldShowDecisionButtons } from "../utils/identity";
+import { caseInvolvesUser, withoutBlockedCases } from "../utils/moderation";
+import ModerationActions from "./ModerationActions";
 import { showToast } from "../utils/toast";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -100,8 +102,9 @@ const CaseCardList = () => {
         },
       });
       if (response.status === 200) {
-        setCaseData(response.data.cases);
-        setNoData(response.data.cases.length === 0);
+        const visible = await withoutBlockedCases(response.data.cases);
+        setCaseData(visible);
+        setNoData(visible.length === 0);
       } else {
         setNoData(true);
       }
@@ -331,6 +334,16 @@ const CaseCardList = () => {
               )}
             </View>
           )}
+          <ModerationActions
+            caseItem={item}
+            onBlocked={(userId) => {
+              setCaseData((prev) => {
+                const next = prev.filter((row) => !caseInvolvesUser(row, userId));
+                setNoData(next.length === 0);
+                return next;
+              });
+            }}
+          />
         </View>
       </View>
     </TouchableOpacity>

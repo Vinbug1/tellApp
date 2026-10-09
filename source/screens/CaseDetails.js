@@ -15,6 +15,7 @@ import calls from "../utils/Salve";
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from '@expo/vector-icons';
+import ModerationActions from "./ModerationActions";
 // import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CaseDetails = ({ route }) => {
@@ -254,6 +255,9 @@ const CaseDetails = ({ route }) => {
 
           <View style={{ height: 95, width: "85%", borderRadius: 5, borderWidth: 1,  bottom: 65,alignSelf:"center" }}>
             <Text style={{ paddingLeft: 15 }}>{caseData.description}</Text>
+          </View>
+          <View style={{ width: "85%", alignSelf: "center", bottom: 50 }}>
+            <ModerationActions caseItem={caseData} onBlocked={() => navigation.goBack()} />
           </View>
         </View>
       </ScrollView>

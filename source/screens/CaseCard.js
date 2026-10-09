@@ -16,11 +16,12 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import baseUrl from "../../assets/baseUrl";
 import { shouldShowDecisionButtons } from "../utils/identity";
+import ModerationActions from "./ModerationActions";
 
 const { width } = Dimensions.get("window");
 const defaultImageSource = require("../../assets/images/briefcase.png");
 
-const CaseCard = ({ item, useCase }) => {
+const CaseCard = ({ item, useCase, onBlocked }) => {
   const navigation = useNavigation();
   const [selectedDecision, setSelectedDecision] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
@@ -197,6 +198,7 @@ const CaseCard = ({ item, useCase }) => {
                 )}
               </View>
             )}
+            <ModerationActions caseItem={caseData} onBlocked={onBlocked} />
           </View>
         </View>
       </TouchableOpacity>
